@@ -112,11 +112,15 @@ def handle_tags(input_soup, root_soup):
         if ref:
             a['osisRef'] = ref
         del a['href']
+        if 'onclick' in a.attrs:
+            del a['onclick']
 
     # replace bolded strings
     for s in input_soup.find_all('strong'):
         s.name = 'hi'
         s['type'] = 'bold'
+        if 'class' in s.attrs:
+            del s['class']
 
     # replace smallcaps
     for cls in ['smallcap', 'small-caps', 'divine-name']:
@@ -193,10 +197,6 @@ def adjust_studynotes(input_html):
             previous.append(n)
 
 def write_studynotes_into_osis(input_html, output_xml, osistext, tag_level):
-
-
-
-    # write studynotes into OSIS file
     bookdivs = {}
     chapdivs = {}
     bookdiv, chapdiv, verdiv = None, None, None
