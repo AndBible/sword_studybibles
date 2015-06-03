@@ -20,39 +20,40 @@ bookrefs = ['Gen', 'Exod', 'Lev', 'Num', 'Deut', 'Josh', 'Judg', 'Ruth', '1Sam',
 class IllegalReference(Exception):
     pass
 
-def parse_studyref(ref):
+def parse_studybible_reference(html_id):
     """
-        Takes studyref of formats:
+        Takes studybibles reference html_id, which is in the following formats:
 
             'nBBCCCVVV' (only start defined)
             'nBBCCCVVV-BBCCCVVV' (verse range defined)
+            'nBBCCCVVV-BBCCCVVV BBCCCVVV-BBCCCVVV BBCCCVVV' (multiple verses/ranges defined)
 
-        Returns tuple start,stop where stop is None if not range.
+        Returns OSIS reference.
 
     """
 
-    if ref == 'n36002012-outline':
+    if html_id == 'n36002012-outline': # exception found in ESV Study bible epub!
         return 'Zeph.2.12'
 
-    if ref[0] not in 'vn':
+    if html_id[0] not in 'vn':
         raise IllegalReference
 
-    ref = ref[1:] # remove first letter
+    html_id = html_id[1:] # remove first letter
 
-    if '.' in ref:
-        rfs = ref.split('.')
+    if '.' in html_id:
+        individual_refs = html_id.split('.')
     else:
-        rfs = [ref]
+        individual_refs = [html_id]
 
     result = []
-    for ref in rfs:
-        if '-' in ref:
-            rfss = ref.split('-')
+    for iref in individual_refs:
+        if '-' in iref:
+            range_refs = iref.split('-')
         else:
-            rfss = [ref]
+            range_refs = [iref]
 
         refs = []
-        for p in rfss:
+        for p in range_refs:
             if len(p) == 9 and p[-1] in 'abc':
                 p = p[:-1]
 
@@ -68,208 +69,201 @@ def parse_studyref(ref):
         result.append('-'.join(refs))
     return ' '.join(result)
 
-def firstref(ref):
+assert parse_studybible_reference('n66002001-66003022.66002001-66003022') == 'Rev.2.1-Rev.3.22 Rev.2.1-Rev.3.22'
+assert parse_studybible_reference('n66002001a-66003022b') == 'Rev.2.1-Rev.3.22'
+assert parse_studybible_reference('n66002001-66003022') == 'Rev.2.1-Rev.3.22'
+assert parse_studybible_reference('n66001013') == 'Rev.1.13'
+assert parse_studybible_reference('n02023001-02023003.02023006-02023008') == 'Exod.23.1-Exod.23.3 Exod.23.6-Exod.23.8'
+
+def first_reference(ref):
     if ' ' in ref:
         ref = ref.split(' ')[0]
     if '-' in ref:
         ref = ref.split('-')[0]
     return ref.split('.')
 
-class StudyBibleParse(object):
-    """
-    Tags to handle:
+def process_files():
+    print "TAG_LEVEL: %s, DEBUG: %s" %(TAG_LEVEL, DEBUG)
+    files = sorted([os.path.join(HTMLDIRECTORY, f) for f in os.listdir(HTMLDIRECTORY) if f.endswith('studynotes.xhtml')])
 
-        - p contains verse range in id
-        - strong - used for bolding words
-        - small - content can be ignored ('NOTE ON ...')
-        - a -> <reference osisRef="...">ref</reference>
-        - span: outline titles etc. with class="outline-*")
+    output_xml = BeautifulSoup(open('template.xml').read(), 'xml')
+    osistext = output_xml.find('osisText')
+    if TAG_LEVEL >= TAGS_BOOK:
+        ot = output_xml.new_tag('div', type='x-testament')
+        matt_ref = bookrefs.index('Matt')
+        for i in bookrefs[:matt_ref]:
+            book = output_xml.new_tag('div', type='book', osisID=i)
+            ot.append(book)
+        nt = output_xml.new_tag('div', type='x-testament')
+        for i in bookrefs[matt_ref:]:
+            book = output_xml.new_tag('div', type='book', osisID=i)
+            nt.append(book)
+        osistext.append(ot)
+        osistext.append(nt)
+    if DEBUG:
+        files = files[:3]
+    for fn in files:
+        print 'processing', files.index(fn), fn
+        try:
+            data_in = codecs.open(fn, 'r', encoding='utf-8').read()
+        except Exception as e:
+            print 'Error in file %s' % fn
+            raise e
 
-    In the first phase, handle only data within <p>, writing content as is
-    """
+        input_html = BeautifulSoup(data_in, 'xml')
 
-    def __init__(self):
-        print "TAG_LEVEL: %s, DEBUG: %s" %(TAG_LEVEL, DEBUG)
-        files = sorted([os.path.join(HTMLDIRECTORY, f) for f in os.listdir(HTMLDIRECTORY) if f.endswith('studynotes.xhtml')])
-
-        bigsoup = BeautifulSoup(open('template.xml').read(), 'xml')
-        osistext = bigsoup.find('osisText')
-        if TAG_LEVEL >= TAGS_BOOK:
-            ot = bigsoup.new_tag('div', type='x-testament')
-            matt_ref = bookrefs.index('Matt')
-            for i in bookrefs[:matt_ref]:
-                book = bigsoup.new_tag('div', type='book', osisID=i)
-                ot.append(book)
-            nt = bigsoup.new_tag('div', type='x-testament')
-            for i in bookrefs[matt_ref:]:
-                book = bigsoup.new_tag('div', type='book', osisID=i)
-                nt.append(book)
-            osistext.append(ot)
-            osistext.append(nt)
-        if DEBUG:
-            files = files[:3]
-        for fn in files:
-            print 'processing', files.index(fn), fn
-            try:
-                data_in = codecs.open(fn, 'r', encoding='utf-8').read()
-            except Exception as e:
-                print 'Error in file %s' % fn
-                raise e
-
-            #bparse.feed(data_in)
-            soup = BeautifulSoup(data_in, 'xml')
-
-            # remove GENESIS - NOTE ON XXX from notes
-            for s in soup.find_all('small'):
+        for s in input_html.find_all('small'):
+            # remove BOOK - NOTE ON XXX from studynotes
+            if 'NOTE ON' in s.text or 'online at' in s.text:
                 s.extract()
+            elif s.text in ['A.D.', 'B.C.', 'A.M.', 'P.M.']:
+                s.replace_with(s.text)
+            else:
+                print 'not removing', s
 
-            # adjust crossreferences
-            for a in soup.find_all('a'):
-                a.name = 'reference'
-                url = a['href']
-                file, verserange = url.split('#')
-                ref = None
-                if file.endswith('text.xhtml'):
-                    ref = parse_studyref(verserange)
-                elif file.endswith('studynotes.xhtml'):
-                    try:
-                        ref = parse_studyref(verserange)
-                    except IllegalReference:
-                        a.replace_with('[%s]' % a.text)
-                elif file.endswith('intros.xhtml') or file.endswith('resources.xhtml'):
-                    # link may be removed
+        # adjust crossreferences
+        for a in input_html.find_all('a'):
+            a.name = 'reference'
+            url = a['href']
+            file, verserange = url.split('#')
+            ref = None
+            if file.endswith('text.xhtml'):
+                ref = parse_studybible_reference(verserange)
+            elif file.endswith('studynotes.xhtml'):
+                try:
+                    ref = parse_studybible_reference(verserange)
+                except IllegalReference:
                     a.replace_with('[%s]' % a.text)
-                else:
-                    raise Exception('not handled')
+            elif file.endswith('intros.xhtml') or file.endswith('resources.xhtml'):
+                # link may be removed
+                a.replace_with('[%s]' % a.text)
+            else:
+                raise Exception('not handled')
 
-                if ref:
-                    a['osisRef'] = ref
-                del a['href']
+            if ref:
+                a['osisRef'] = ref
+            del a['href']
 
-            # replace bolded strings
-            for s in soup.find_all('strong'):
+        # replace bolded strings
+        for s in input_html.find_all('strong'):
+            s.name = 'hi'
+            s['type'] = 'bold'
+
+        # replace smallcaps
+        for s in input_html.find_all('span', class_='smallcap'):
+            s.name = 'hi'
+            s['type'] = 'small-caps'
+            del s['class']
+
+        # find outline-1 ('title' studynote covering verse range)
+        # find outline-2 (bigger studynote title, verse range highlighted)
+        # find outline-3 (smaller studynote title, verse range not highlighted)
+        # find outline-4 (even smaller studynote title, verse range not highlighted)
+
+        for k in ['outline-%s'%i for i in xrange(1,5)]:
+            for s in input_html.find_all('span', class_=k):
                 s.name = 'hi'
                 s['type'] = 'bold'
-
-            # replace smallcaps
-            for s in soup.find_all('span', class_='smallcap'):
-                s.name = 'hi'
-                s['type'] = 'small-caps'
                 del s['class']
+                new_tag = output_xml.new_tag('hi', type='underline')
+                s.wrap(new_tag)
 
-            # find outline-1 ('title' studynote covering verse range)
-            # find outline-2 (bigger studynote title, verse range highlighted)
-            # find outline-3 (smaller studynote title, verse range not highlighted)
-            # find outline-4 (even smaller studynote title, verse range not highlighted)
+        # find esv font definitions
+        for s in input_html.find_all('span', class_='bible-version'):
+            assert s.text.lower() in ['esv', 'lxx', 'kjv', 'mt'], s.text
+            s.replace_with(s.text.upper())
 
-            for k in ['outline-%s'%i for i in xrange(1,5)]:
-                for s in soup.find_all('span', class_=k):
-                    s.name = 'hi'
-                    s['type'] = 'bold'
-                    del s['class']
-                    new_tag = bigsoup.new_tag('hi', type='underline')
-                    s.wrap(new_tag)
+        result = input_html.find_all('span')
+        if result:
+            print 'still some spans: ', result
 
-            # find esv font definitions
-            for s in soup.find_all('span', class_='bible-version'):
-                assert s.text.lower() in ['esv', 'lxx', 'kjv', 'mt'], s.text
-                s.replace_with(s.text.upper())
+        for class_ in ['normal', 'image', 'era', 'caption', 'image-separator', 'chart-footnote']:
+            for s in input_html.find_all('p', class_=class_):
+                s.extract()
 
-            result = soup.find_all('span')
-            if result:
-                print 'still some spans: ', result
-
-            for class_ in ['normal', 'image', 'era', 'caption', 'image-separator', 'chart-footnote']:
-                for s in soup.find_all('p', class_=class_):
-                    s.extract()
-
-            for s in soup.find_all('hi'):
-                if len(s) == 0:
-                    s.extract()
+        for s in input_html.find_all('hi'):
+            if len(s) == 0:
+                s.extract()
 
 
-            #result = soup.find_all('div')
-            #if result:
-            #    print 'some divs!', result
+        #result = soup.find_all('div')
+        #if result:
+        #    print 'some divs!', result
 
-            # adjust studynotes
-            for n in soup.find_all('p'):
-                if not n['class'] in ['outline-1', 'outline-3', 'outline-4', 'study-note-continue', 'study-note']:
+        # adjust studynotes
+        for n in input_html.find_all('p'):
+            if not n['class'] in ['outline-1', 'outline-3', 'outline-4', 'study-note-continue', 'study-note']:
+                print 'not writing', n
+                continue
+
+            if 'id' in n.attrs:
+                try:
+                    ref = parse_studybible_reference(n['id'])
+                except IllegalReference:
                     print 'not writing', n
                     continue
 
-                if 'id' in n.attrs:
-                    try:
-                        ref = parse_studyref(n['id'])
-                    except IllegalReference:
-                        print 'not writing', n
-                        continue
+                del n['id']
+                if 'class' in n.attrs:
+                    del n['class']
 
-                    del n['id']
-                    if 'class' in n.attrs:
-                        del n['class']
+                new_div = input_html.new_tag('studynote')
+                new_div['type'] = 'section'
+                new_div['annotateType'] = 'commentary'
+                new_div['annotateRef'] = ref
 
-                    new_div = soup.new_tag('studynote')
-                    new_div['type'] = 'section'
-                    new_div['annotateType'] = 'commentary'
-                    new_div['annotateRef'] = ref
+                n.wrap(new_div)
+            else:
+                previous = n.find_previous('studynote')
+                n.extract()
+                if 'class' in n.attrs:
+                    del n['class']
+                previous.append(n)
 
-                    n.wrap(new_div)
-                else:
-                    previous = n.find_previous('studynote')
-                    n.extract()
-                    if 'class' in n.attrs:
-                        del n['class']
-                    previous.append(n)
+        # write studynotes into OSIS file
+        bookdivs = {}
+        chapdivs = {}
+        bookdiv, chapdiv, verdiv = None, None, None
+        for n in input_html.find_all('studynote'):
+            n.name = 'div'
+            book, chap, ver = first_reference(n['annotateRef'])
+            chapref = '%s.%s'%(book, chap)
+            verref = '%s.%s.%s'%(book, chap, ver)
 
-            # write studynotes into OSIS file
-            bookdivs = {}
-            chapdivs = {}
-            bookdiv, chapdiv, verdiv = None, None, None
-            for n in soup.find_all('studynote'):
-                n.name = 'div'
-                book, chap, ver = firstref(n['annotateRef'])
-                chapref = '%s.%s'%(book, chap)
-                verref = '%s.%s.%s'%(book, chap, ver)
+            if TAG_LEVEL >= TAGS_BOOK:
+                bookdiv = bookdivs.get(book)
+                if bookdiv is None:
+                    bookdiv = bookdivs[book] = output_xml.find('div', osisID=book)
+            if TAG_LEVEL >= TAGS_CHAPTES:
+                chapdiv = chapdivs.get(chapref)
+                if chapdiv is None:
+                    chapdiv = bookdiv.find('chapter', osisID=chapref)
+                    if not chapdiv:
+                        chapdiv = output_xml.new_tag('chapter', osisID=chapref)
+                        bookdiv.append(chapdiv)
+                    chapdivs[chapref] = chapdiv
+            if TAG_LEVEL >= TAGS_VERSES:
+                verdiv = chapdiv.find('verse', osisID=verref)
+                if not verdiv:
+                    verdiv = output_xml.new_tag('verse', osisID=verref)
+                    chapdiv.append(verdiv)
 
-                if TAG_LEVEL >= TAGS_BOOK:
-                    bookdiv = bookdivs.get(book)
-                    if bookdiv is None:
-                        bookdiv = bookdivs[book] = bigsoup.find('div', osisID=book)
-                if TAG_LEVEL >= TAGS_CHAPTES:
-                    chapdiv = chapdivs.get(chapref)
-                    if chapdiv is None:
-                        chapdiv = bookdiv.find('chapter', osisID=chapref)
-                        if not chapdiv:
-                            chapdiv = bigsoup.new_tag('chapter', osisID=chapref)
-                            bookdiv.append(chapdiv)
-                        chapdivs[chapref] = chapdiv
-                if TAG_LEVEL >= TAGS_VERSES:
-                    verdiv = chapdiv.find('verse', osisID=verref)
-                    if not verdiv:
-                        verdiv = bigsoup.new_tag('verse', osisID=verref)
-                        chapdiv.append(verdiv)
-
-                [osistext, bookdiv, chapdiv, verdiv][TAG_LEVEL].append(n)
+            [osistext, bookdiv, chapdiv, verdiv][TAG_LEVEL].append(n)
 
 
-        out = self.out = codecs.open('out.osis', 'w', encoding='utf-8')
+    out = codecs.open('out.osis', 'w', encoding='utf-8')
 
-        if DEBUG:
-            out.write(bigsoup.prettify())
-        else:
-            out.write(unicode(bigsoup))
+    if DEBUG:
+        out.write(output_xml.prettify())
+    else:
+        out.write(unicode(output_xml))
 
-            out2 = codecs.open('pretty.xml', 'w', encoding='utf-8')
-            out2.write(bigsoup.prettify())
-            out2.close()
+        out2 = codecs.open('pretty.xml', 'w', encoding='utf-8')
+        out2.write(output_xml.prettify())
+        out2.close()
 
-        out.close()
+    out.close()
 
 
-assert parse_studyref('n66002001-66003022.66002001-66003022') == 'Rev.2.1-Rev.3.22 Rev.2.1-Rev.3.22'
-assert parse_studyref('n66002001a-66003022b') == 'Rev.2.1-Rev.3.22'
-assert parse_studyref('n66002001-66003022') == 'Rev.2.1-Rev.3.22'
-assert parse_studyref('n66001013') == 'Rev.1.13'
-assert parse_studyref('n02023001-02023003.02023006-02023008') == 'Exod.23.1-Exod.23.3 Exod.23.6-Exod.23.8'
-StudyBibleParse()
+
+process_files()
