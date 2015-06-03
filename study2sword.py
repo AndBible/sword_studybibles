@@ -1,10 +1,13 @@
 import os, codecs
 from bs4 import BeautifulSoup, Tag
 
-DEBUG = False
-#DEBUG = True
-if 'DEBUG' in os.environ:
-    DEBUG = True
+TAGS_NONE = 0
+TAGS_BOOK = 1
+TAGS_CHAPTES = 2
+TAGS_VERSES = 3
+
+DEBUG = int(os.environ.get('DEBUG', 0))
+TAG_LEVEL = int(os.environ.get('TAG_LEVEL', 0))
 
 HTMLDIRECTORY='esv/OEBPS/Text'
 
@@ -86,21 +89,23 @@ class StudyBibleParse(object):
     """
 
     def __init__(self):
+        print "TAG_LEVEL: %s, DEBUG: %s" %(TAG_LEVEL, DEBUG)
         files = sorted([os.path.join(HTMLDIRECTORY, f) for f in os.listdir(HTMLDIRECTORY) if f.endswith('studynotes.xhtml')])
 
         bigsoup = BeautifulSoup(open('template.xml').read(), 'xml')
         osistext = bigsoup.find('osisText')
-        #ot = bigsoup.new_tag('div', type='x-testament')
-        #matt_ref = bookrefs.index('Matt')
-        #for i in bookrefs[:matt_ref]:
-        #    book = bigsoup.new_tag('div', type='book', osisID=i)
-        #    ot.append(book)
-        #nt = bigsoup.new_tag('div', type='x-testament')
-        #for i in bookrefs[matt_ref:]:
-        #    book = bigsoup.new_tag('div', type='book', osisID=i)
-        #    nt.append(book)
-        #osistext.append(ot)
-        #osistext.append(nt)
+        if TAG_LEVEL >= TAGS_BOOK:
+            ot = bigsoup.new_tag('div', type='x-testament')
+            matt_ref = bookrefs.index('Matt')
+            for i in bookrefs[:matt_ref]:
+                book = bigsoup.new_tag('div', type='book', osisID=i)
+                ot.append(book)
+            nt = bigsoup.new_tag('div', type='x-testament')
+            for i in bookrefs[matt_ref:]:
+                book = bigsoup.new_tag('div', type='book', osisID=i)
+                nt.append(book)
+            osistext.append(ot)
+            osistext.append(nt)
         if DEBUG:
             files = files[:3]
         for fn in files:
@@ -130,10 +135,10 @@ class StudyBibleParse(object):
                     try:
                         ref = parse_studyref(verserange)
                     except IllegalReference:
-                        a.replace_with('EXTERNAL %s' % a.text)
+                        a.replace_with('[%s]' % a.text)
                 elif file.endswith('intros.xhtml') or file.endswith('resources.xhtml'):
                     # link may be removed
-                    a.replace_with('EXTERNAL %s' % a.text)
+                    a.replace_with('[%s]' % a.text)
                 else:
                     raise Exception('not handled')
 
@@ -152,29 +157,18 @@ class StudyBibleParse(object):
                 s['type'] = 'small-caps'
                 del s['class']
 
-            # find outline-2 (bigger studynote title, verse range highlighted)
-            for s in soup.find_all('span', class_='outline-2'):
-                s.name = 'hi'
-                s['type'] = 'emphasis'
-                del s['class']
-
-            # find outline-3 (smaller studynote title, verse range not highlighted)
-            for s in soup.find_all('span', class_='outline-3'):
-                s.name = 'hi'
-                s['type'] = 'emphasis'
-                del s['class']
-
-            # find outline-4 (even smaller studynote title, verse range not highlighted)
-            for s in soup.find_all('span', class_='outline-4'):
-                s.name = 'hi'
-                s['type'] = 'emphasis'
-                del s['class']
-
             # find outline-1 ('title' studynote covering verse range)
-            for s in soup.find_all('span', class_='outline-1'):
-                s.name = 'hi'
-                s['type'] = 'emphasis'
-                del s['class']
+            # find outline-2 (bigger studynote title, verse range highlighted)
+            # find outline-3 (smaller studynote title, verse range not highlighted)
+            # find outline-4 (even smaller studynote title, verse range not highlighted)
+
+            for k in ['outline-%s'%i for i in xrange(1,5)]:
+                for s in soup.find_all('span', class_=k):
+                    s.name = 'hi'
+                    s['type'] = 'bold'
+                    del s['class']
+                    new_tag = bigsoup.new_tag('hi', type='underline')
+                    s.wrap(new_tag)
 
             # find esv font definitions
             for s in soup.find_all('span', class_='bible-version'):
@@ -231,28 +225,32 @@ class StudyBibleParse(object):
             # write studynotes into OSIS file
             bookdivs = {}
             chapdivs = {}
+            bookdiv, chapdiv, verdiv = None, None, None
             for n in soup.find_all('studynote'):
                 n.name = 'div'
-                #book, chap, ver = firstref(n['annotateRef'])
-                #chapref = '%s.%s'%(book, chap)
-                #verref = '%s.%s.%s'%(book, chap, ver)
-                #chapdiv = chapdivs.get(chapref)
-                #if chapdiv is None:
-                #    bookdiv = bookdivs.get(book)
-                #    if bookdiv is None:
-                #        bookdiv = bookdivs[book] = bigsoup.find('div', osisID=book)
-                #    chapdiv = bookdiv.find('chapter', osisID=chapref)
-                #    if not chapdiv:
-                #        chapdiv = bigsoup.new_tag('chapter', osisID=chapref)
-                #        bookdiv.append(chapdiv)
-                #    chapdivs[chapref] = chapdiv
-                #verdiv = chapdiv.find('verse', osisID=verref)
-                #if not verdiv:
-                #    verdiv = bigsoup.new_tag('verse', osisID=verref)
-                #    chapdiv.append(verdiv)
-                #verdiv.append(n)
-                #chapdiv.append(n)
-                osistext.append(n)
+                book, chap, ver = firstref(n['annotateRef'])
+                chapref = '%s.%s'%(book, chap)
+                verref = '%s.%s.%s'%(book, chap, ver)
+
+                if TAG_LEVEL >= TAGS_BOOK:
+                    bookdiv = bookdivs.get(book)
+                    if bookdiv is None:
+                        bookdiv = bookdivs[book] = bigsoup.find('div', osisID=book)
+                if TAG_LEVEL >= TAGS_CHAPTES:
+                    chapdiv = chapdivs.get(chapref)
+                    if chapdiv is None:
+                        chapdiv = bookdiv.find('chapter', osisID=chapref)
+                        if not chapdiv:
+                            chapdiv = bigsoup.new_tag('chapter', osisID=chapref)
+                            bookdiv.append(chapdiv)
+                        chapdivs[chapref] = chapdiv
+                if TAG_LEVEL >= TAGS_VERSES:
+                    verdiv = chapdiv.find('verse', osisID=verref)
+                    if not verdiv:
+                        verdiv = bigsoup.new_tag('verse', osisID=verref)
+                        chapdiv.append(verdiv)
+
+                [osistext, bookdiv, chapdiv, verdiv][TAG_LEVEL].append(n)
 
 
         out = self.out = codecs.open('out.osis', 'w', encoding='utf-8')
