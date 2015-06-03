@@ -39,3 +39,8 @@ osis2mod module_dir/modules/comments/zcom/glbn/ esv.xml -v NRSV -z -b 4
 Your sword module is now built under module_dir. Sample configurations are found in 
 module_dir/mods.d/.
 
+Quality considerations
+----------------------
+ - Only standard studynotes are included (no charts, figures etc)
+ - Tested to work with xiphos. There seem to be problems currently with andbible, for example. Trying to fix that...
+
