@@ -5,9 +5,9 @@ MCADIR=modules/comments/zcom/mcan/
 ESVDIR=modules/comments/zcom/esvn/
 
 #generate OSIS
-python study2sword.py --title "ESV Global Study Bible Notes" --work_id "GBLN" global
-python study2sword.py --title "McArthur Study Bible Notes" --work_id "MCAN" mcarthur
-python study2sword.py --title "ESV Study Bible Notes" --work_id "ESVN" esv
+python study2sword.py --title "ESV Global Study Bible Notes" --work_id "GBLN" global --tag_level 2
+python study2sword.py --title "McArthur Study Bible Notes" --work_id "MCAN" mcarthur --tag_level 2
+python study2sword.py --title "ESV Study Bible Notes" --work_id "ESVN" esv --tag_level 2
 
 mkdir module_dir/$ESVDIR
 mkdir module_dir/$MCADIR
@@ -18,9 +18,9 @@ rm module_dir/$MCADIR/*
 rm module_dir/$GBLDIR/*
 
 # convert into sword module
-osis2mod module_dir/$ESVDIR esv.xml -v NRSV -z -b 4
-osis2mod module_dir/$GBLDIR global.xml -v NRSV -z -b 4
-osis2mod module_dir/$MCADIR mcarthur.xml -v NRSV -z -b 4
+osis2mod module_dir/$ESVDIR esv.xml -v NRSV -z -b 3
+osis2mod module_dir/$GBLDIR global.xml -v NRSV -z -b 3
+osis2mod module_dir/$MCADIR mcarthur.xml -v NRSV -z -b 3
 
 #install locally
 rm -r ~/.sword/$ESVDIR

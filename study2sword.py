@@ -122,6 +122,13 @@ def handle_tags(input_soup, root_soup):
         if 'class' in s.attrs:
             del s['class']
 
+    # replace italic strings
+    for s in input_soup.find_all('i'):
+        s.name = 'hi'
+        s['type'] = 'italic'
+        if 'class' in s.attrs:
+            del s['class']
+
     # replace smallcaps
     for cls in ['smallcap', 'small-caps', 'divine-name']:
         for s in input_soup.find_all('span', class_=cls):
