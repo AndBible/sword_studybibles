@@ -1,3 +1,9 @@
 *.bzs
 *.bzv
 *.bzz
+/nt.czs
+/nt.czv
+/nt.czz
+/ot.czs
+/ot.czv
+*.czz
