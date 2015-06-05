@@ -178,7 +178,8 @@ def adjust_studynotes(input_html):
             continue
 
         handle_tags(n, input_html)
-
+        n.name = 'div'
+        n['type'] = 'paragraph'
         if 'id' in n.attrs:
             try:
                 ref = parse_studybible_reference(n['id'])
@@ -238,7 +239,7 @@ def process_files(options,  input_dir):
     tag_level = options.tag_level
     debug = options.debug
 
-    print "TAG_LEVEL: %s, DEBUG: %s" %(tag_level, debug)
+    print "TAG_LEVEL: %s, DEBUG: %s INPUT DIR %s" %(tag_level, debug, input_dir)
     files = sorted([os.path.join(input_dir, HTMLDIRECTORY, f) for f in os.listdir(os.path.join(input_dir, HTMLDIRECTORY)) if f.endswith('studynotes.xhtml')])
 
     template = jinja2.Template(open('template.xml').read())
@@ -276,18 +277,20 @@ def process_files(options,  input_dir):
         adjust_studynotes(input_html)
         write_studynotes_into_osis(input_html, output_xml, osistext, tag_level)
 
-    out = codecs.open('%s.xml'%input_dir, 'w', encoding='utf-8')
 
     if debug:
-        out.write(output_xml.prettify())
-    else:
-        out.write(unicode(output_xml))
-
         out2 = codecs.open('%s_pretty.xml'%input_dir, 'w', encoding='utf-8')
         out2.write(output_xml.prettify())
         out2.close()
+    else:
+        out = codecs.open('%s.xml'%input_dir, 'w', encoding='utf-8')
+        out.write(unicode(output_xml))
+        out.close()
 
-    out.close()
+        out = codecs.open('%s_pretty.xml'%input_dir, 'w', encoding='utf-8')
+        out.write(output_xml.prettify())
+        out.close()
+
 
 parser = optparse.OptionParser(usage='Usage. %prog [options] input_dir')
 parser.add_option('--debug', action='store_true', dest='debug', default=False,

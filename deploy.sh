@@ -45,9 +45,9 @@ ssh taandroid rm /sdcard/jsword/$ESVDIR/*
 ssh taandroid rm /sdcard/jsword/$MCADIR/*
 ssh taandroid rm /sdcard/jsword/$GBLDIR/*
 
-scp -r module_dir/$ESVDIR/ taandroid:/sdcard/jsword/$ESVDIR/
-scp -r module_dir/$GBLDIR/ taandroid:/sdcard/jsword/$GBLDIR/
-scp -r module_dir/$MCADIR/ taandroid:/sdcard/jsword/$MCADIR/
+scp module_dir/$ESVDIR/* taandroid:/sdcard/jsword/$ESVDIR/
+scp module_dir/$GBLDIR/* taandroid:/sdcard/jsword/$GBLDIR/
+scp module_dir/$MCADIR/* taandroid:/sdcard/jsword/$MCADIR/
 
 scp module_dir/mods.d/*.conf taandroid:/sdcard/jsword/mods.d/
 ssh taandroid chmod -R 777 /sdcard/jsword
