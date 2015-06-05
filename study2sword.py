@@ -166,9 +166,10 @@ def handle_tags(input_soup, root_soup):
         if len(s) == 0:
             s.extract()
 
-def adjust_studynotes(input_html):
-    for n in input_html.find_all('p'):
-
+def adjust_studynotes(body, root_soup):
+    for n in body.children:
+        if n.name != 'p':
+            continue
         if not n['class'] in ['outline-1', 'outline-3', 'outline-4', 'study-note-continue', 'study-note']:
             # not writing any charts, images, facts ('normal' in global)...
             if n['class'] in ['normal', 'image', 'era', 'caption', 'image-separator', 'chart-footnote']:
@@ -177,7 +178,7 @@ def adjust_studynotes(input_html):
                 print 'not writing', n
             continue
 
-        handle_tags(n, input_html)
+        handle_tags(n, root_soup)
         n.name = 'div'
         n['type'] = 'paragraph'
         if 'id' in n.attrs:
@@ -191,7 +192,7 @@ def adjust_studynotes(input_html):
             if 'class' in n.attrs:
                 del n['class']
 
-            new_div = input_html.new_tag('studynote')
+            new_div = root_soup.new_tag('studynote')
             new_div['type'] = 'section'
             new_div['annotateType'] = 'commentary'
             new_div['annotateRef'] = ref
@@ -274,8 +275,9 @@ def process_files(options,  input_dir):
         #if result:
         #    print 'some divs!', result
 
-        adjust_studynotes(input_html)
-        write_studynotes_into_osis(input_html, output_xml, osistext, tag_level)
+        body = input_html.find('body')
+        adjust_studynotes(body, input_html)
+        write_studynotes_into_osis(body, output_xml, osistext, tag_level)
 
 
     if debug:
