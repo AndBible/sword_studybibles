@@ -51,3 +51,8 @@ Known issues
 ------------
  - Andbible issue: verse links when there is verse range do not show correctly.
  - If comment is for verse range, it is actually shown only for the first verse (all apps).
+
+TODO
+----
+  - Add bible book intros into beginning of each book in commentary module
+  - Make sword book module out of other articles
