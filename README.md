@@ -18,9 +18,9 @@ Installing and converting to sword module
 
 Install python packages beautifulsoup4 and jinja2:
 
-pip install beautifulsoup4
-pip install jinja2
-pip install lxml
+   pip install beautifulsoup4
+   pip install jinja2
+   pip install lxml
 
 Unzip your epub file:
 
@@ -37,7 +37,7 @@ This will create OSIS XML file modulename.xml.
 This can be converted to sword module by osis2mod tool, that can be obtained from
 http://www.crosswire.org/wiki/DevTools:Modules
 
-osis2mod module_dir/modules/comments/zcom/glbn/ esv.xml -v NRSV -z -b 4
+   osis2mod module_dir/modules/comments/zcom/glbn/ esv.xml -v NRSV -z -b 4
 
 Your sword module is now built under module_dir. Sample configurations are found in 
 module_dir/mods.d/.
