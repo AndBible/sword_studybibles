@@ -1,5 +1,5 @@
 import os, codecs, optparse
-from bs4 import BeautifulSoup
+from bs4 import BeautifulSoup, NavigableString
 import jinja2
 
 TAGS_NONE = 0
@@ -80,18 +80,10 @@ def first_reference(ref):
         ref = ref.split('-')[0]
     return ref.split('.')
 
-def handle_tags(input_soup, root_soup):
-    for s in input_soup.find_all('small'):
-        # remove BOOK - NOTE ON XXX from studynotes
-        if 'NOTE ON' in s.text or 'online at' in s.text:
-            s.extract()
-        elif s.text in ['A.D.', 'B.C.', 'A.M.', 'P.M.']:
-            s.replace_with(s.text)
-        else:
-            print 'not removing', s
-
-    # adjust crossreferences
+def fix_bibleref_links(input_soup, root_soup):
     for a in input_soup.find_all('a'):
+        if a['href'].startswith('http'):
+            continue
         a.name = 'reference'
         url = a['href']
         file, verserange = url.split('#')
@@ -115,26 +107,51 @@ def handle_tags(input_soup, root_soup):
         if 'onclick' in a.attrs:
             del a['onclick']
 
+
+def fix_studynote_text_tags(input_soup, root_soup):
+    for s in input_soup.find_all('small'):
+        # remove BOOK - NOTE ON XXX from studynotes
+        if 'NOTE ON' in s.text:
+            s.extract()
+        elif 'online at' in s.text or 'ESV' == s.text:
+            s.unwrap()
+        elif s.text in ['A.D.', 'B.C.', 'A.M.', 'P.M.']:
+            s.replace_with(s.text)
+        else:
+            raise Exception('still some unhandled small %s', s)
+
+    fix_bibleref_links(input_soup, root_soup)
+
     # replace bolded strings
     for s in input_soup.find_all('strong'):
         s.name = 'hi'
         s['type'] = 'bold'
-        if 'class' in s.attrs:
-            del s['class']
+
+    for s in input_soup.find_all('h4'):
+        s.name = 'div'
+        s['type'] = 'paragraph'
+
+    for i in input_soup.find_all('ol'):
+        i.name = 'list'
+
+    for i in input_soup.find_all('li'):
+        i.name = 'item'
 
     # replace italic strings
     for s in input_soup.find_all('i'):
         s.name = 'hi'
         s['type'] = 'italic'
-        if 'class' in s.attrs:
-            del s['class']
+
+    # replace italic strings
+    for s in input_soup.find_all('em'):
+        s.name = 'hi'
+        s['type'] = 'emphasis'
 
     # replace smallcaps
     for cls in ['smallcap', 'small-caps', 'divine-name']:
         for s in input_soup.find_all('span', class_=cls):
             s.name = 'hi'
             s['type'] = 'small-caps'
-            del s['class']
 
     # find outline-1 ('title' studynote covering verse range)
     # find outline-2 (bigger studynote title, verse range highlighted)
@@ -145,42 +162,92 @@ def handle_tags(input_soup, root_soup):
         for s in input_soup.find_all('span', class_=k):
             s.name = 'hi'
             s['type'] = 'bold'
-            del s['class']
             new_tag = root_soup.new_tag('hi', type='underline')
             s.wrap(new_tag)
 
     # find esv font definitions
-    for s in input_soup.find_all('span', class_='bible-version'):
-        assert s.text.lower() in ['esv', 'lxx', 'kjv', 'mt', 'nkjv', 'nasb'], s.text
-        s.replace_with(s.text.upper())
-
-    result = input_soup.find_all('span')
-    if result:
-        print 'still some spans: ', result
-
-    for class_ in ['normal', 'image', 'era', 'caption', 'image-separator', 'chart-footnote']:
-        for s in input_soup.find_all('p', class_=class_):
-            s.extract()
+    for s in input_soup.find_all('span'):
+        cls = s.get('class', None)
+        if cls == 'bible-version':
+            assert s.text.lower() in ['esv', 'lxx', 'kjv', 'mt', 'nkjv', 'nasb'], s.text
+            s.replace_with(s.text.upper())
+        elif cls in ['profile-lead', 'facts-lead']:
+            s.name = 'hi'
+            s['type'] = 'emphasis'
+        elif cls in ['good-king', 'mixture-king', 'bad-king', 'normal', None]:
+            s.unwrap()
+        else:
+            raise Exception('span class not known %s', cls)
 
     for s in input_soup.find_all('hi'):
         if len(s) == 0:
             s.extract()
 
+def fix_table(table_div, root_soup):
+    for n in table_div.find_all('tr'):
+        n.name = 'row'
+    for n in table_div.find_all('th'):
+        n.name = 'cell'
+        n['role'] = 'label'
+    for n in table_div.find_all('td'):
+        n.name = 'cell'
+    for p in table_div.find_all('h3'):
+        p.name = 'title'
+
+    for p in table_div.find_all('p'):
+        p.name = 'div'
+        p['type'] = 'paragraph'
+
+def fix_figure(img_div, root_soup):
+    fix_table(img_div, root_soup)
+    for img in img_div.find_all('img'):
+        img.name = 'figure'
+        img['src'] = img['src'].replace('../Images/', 'images/')
+
+def fix_fact(fact_div, root_soup):
+    for n in fact_div.find_all('h2'):
+        n.name = 'title'
+
 def adjust_studynotes(body, root_soup):
     for n in body.children:
-        if n.name != 'p':
-            continue
-        if not n['class'] in ['outline-1', 'outline-3', 'outline-4', 'study-note-continue', 'study-note']:
-            # not writing any charts, images, facts ('normal' in global)...
-            if n['class'] in ['normal', 'image', 'era', 'caption', 'image-separator', 'chart-footnote']:
-                pass
-            else:
-                print 'not writing', n
+        if n.name in ['h1', 'hr']:
             continue
 
-        handle_tags(n, root_soup)
+        elif n.name == 'div':
+            cls = n['class']
+            if cls == 'object chart':
+                fix_table(n, root_soup)
+            elif cls == 'object map':
+                fix_figure(n, root_soup)
+            elif cls == 'object illustration':
+                fix_figure(n, root_soup)
+            elif cls == 'object diagram':
+                fix_figure(n, root_soup)
+            elif cls == 'fact':
+                fix_fact(n, root_soup)
+            elif cls == 'profile':
+                fix_fact(n, root_soup)
+            elif cls == 'object info':
+                fix_table(n, root_soup)
+            else:
+                raise Exception('Unknown class %s' % cls)
+        elif n.name == 'p':
+            if n['class'] not in ['outline-1', 'outline-3', 'outline-4', 'study-note-continue', 'study-note']:
+                raise Exception('not handled %s'%n['class'])
+        elif isinstance(n, NavigableString):
+            continue
+        elif n.name == 'table':
+            n = n.wrap(root_soup.new_tag('div', type='paragraph'))
+            fix_table(n, root_soup)
+        elif n.name == 'ol':
+            n = n.wrap(root_soup.new_tag('div', type='paragraph'))
+        else:
+            raise Exception('not handled %s' % n)
+
+        fix_studynote_text_tags(n, root_soup)
         n.name = 'div'
         n['type'] = 'paragraph'
+
         if 'id' in n.attrs:
             try:
                 ref = parse_studybible_reference(n['id'])
@@ -189,8 +256,6 @@ def adjust_studynotes(body, root_soup):
                 continue
 
             del n['id']
-            if 'class' in n.attrs:
-                del n['class']
 
             new_div = root_soup.new_tag('studynote')
             new_div['type'] = 'section'
@@ -201,8 +266,6 @@ def adjust_studynotes(body, root_soup):
         else:
             previous = n.find_previous('studynote')
             n.extract()
-            if 'class' in n.attrs:
-                del n['class']
             previous.append(n)
 
 def write_studynotes_into_osis(input_html, output_xml, osistext, tag_level):
@@ -270,10 +333,6 @@ def process_files(options,  input_dir):
             raise e
 
         input_html = BeautifulSoup(data_in, 'xml')
-
-        #result = soup.find_all('div')
-        #if result:
-        #    print 'some divs!', result
 
         body = input_html.find('body')
         adjust_studynotes(body, input_html)
