@@ -5,9 +5,9 @@ MCADIR=modules/comments/zcom/mcan/
 ESVDIR=modules/comments/zcom/esvn/
 
 #generate OSIS
-python study2sword.py --title "ESV Study Bible Notes" --work_id "ESVN" esv --tag_level 0
-python study2sword.py --title "ESV Global Study Bible Notes" --work_id "GBLN" global --tag_level 0
-python study2sword.py --title "McArthur Study Bible Notes" --work_id "MCAN" mcarthur --tag_level 0
+python study2sword.py --title "ESV Study Bible notes" --work_id "ESVN" esv --tag_level 0
+python study2sword.py --title "The ESV Global Study Bible notes" --work_id "GLBN" global --tag_level 0
+python study2sword.py --title "McArthur Study Bible notes" --work_id "MCAN" mcarthur --tag_level 0
 
 mkdir module_dir/$ESVDIR
 mkdir module_dir/$MCADIR
@@ -53,3 +53,13 @@ rsync $opts module_dir/$MCADIR/ taandroid:/sdcard/jsword/$MCADIR/
 
 scp module_dir/mods.d/*.conf taandroid:/sdcard/jsword/mods.d/
 ssh taandroid chmod -R 777 /sdcard/jsword
+
+#generate global.zip for distributon
+rm -r global_dir
+cp -r module_dir global_dir
+rm global_dir/mods.d/esvn.conf
+rm global_dir/mods.d/mcan.conf
+rm -r global_dir/modules/comments/zcom/mcan
+rm -r global_dir/modules/comments/zcom/esvn
+cd global_dir
+zip -r glbn.zip *
