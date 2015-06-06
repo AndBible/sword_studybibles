@@ -5,9 +5,9 @@ MCADIR=modules/comments/zcom/mcan/
 ESVDIR=modules/comments/zcom/esvn/
 
 #generate OSIS
+python study2sword.py --title "ESV Study Bible Notes" --work_id "ESVN" esv --tag_level 0
 python study2sword.py --title "ESV Global Study Bible Notes" --work_id "GBLN" global --tag_level 0
 python study2sword.py --title "McArthur Study Bible Notes" --work_id "MCAN" mcarthur --tag_level 0
-python study2sword.py --title "ESV Study Bible Notes" --work_id "ESVN" esv --tag_level 0
 
 mkdir module_dir/$ESVDIR
 mkdir module_dir/$MCADIR
@@ -30,9 +30,9 @@ mkdir ~/.sword/$ESVDIR
 mkdir ~/.sword/$MCADIR
 mkdir ~/.sword/$GBLDIR
 
-cp module_dir/$ESVDIR/* ~/.sword/$ESVDIR/
-cp module_dir/$MCADIR/* ~/.sword/$MCADIR/
-cp module_dir/$GBLDIR/* ~/.sword/$GBLDIR/
+cp -r module_dir/$ESVDIR/* ~/.sword/$ESVDIR/
+cp -r module_dir/$MCADIR/* ~/.sword/$MCADIR/
+cp -r module_dir/$GBLDIR/* ~/.sword/$GBLDIR/
 
 cp module_dir/mods.d/*.conf ~/.sword/mods.d/
 
@@ -41,13 +41,15 @@ ssh taandroid mkdir /sdcard/jsword/$ESVDIR
 ssh taandroid mkdir /sdcard/jsword/$MCADIR
 ssh taandroid mkdir /sdcard/jsword/$GBLDIR
 
-ssh taandroid rm /sdcard/jsword/$ESVDIR/*
-ssh taandroid rm /sdcard/jsword/$MCADIR/*
-ssh taandroid rm /sdcard/jsword/$GBLDIR/*
+#ssh taandroid rm -r /sdcard/jsword/$ESVDIR/*
+#ssh taandroid rm /sdcard/jsword/$MCADIR/*
+#ssh taandroid rm /sdcard/jsword/$GBLDIR/*
 
-scp module_dir/$ESVDIR/* taandroid:/sdcard/jsword/$ESVDIR/
-scp module_dir/$GBLDIR/* taandroid:/sdcard/jsword/$GBLDIR/
-scp module_dir/$MCADIR/* taandroid:/sdcard/jsword/$MCADIR/
+opts="-t -v -r --progress --delete"
+
+rsync $opts module_dir/$ESVDIR/ taandroid:/sdcard/jsword/$ESVDIR/
+rsync $opts module_dir/$GBLDIR/ taandroid:/sdcard/jsword/$GBLDIR/
+rsync $opts module_dir/$MCADIR/ taandroid:/sdcard/jsword/$MCADIR/
 
 scp module_dir/mods.d/*.conf taandroid:/sdcard/jsword/mods.d/
 ssh taandroid chmod -R 777 /sdcard/jsword
