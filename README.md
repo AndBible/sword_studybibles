@@ -10,6 +10,9 @@ Epub-files for ESV Study bible and McArthur Study Bible can be downloaded from c
 (https://www.crossway.org/customer/library/#product_type=Ebook) if you have purchased them either
 as a physical book or only digitally. 
 
+I'm proceeding to get free Global Study Bible module distributed via crosswire etc. and proprietary
+modules via crossway's e-library.
+
 Installing and converting to sword module
 -----------------------------------------
 
@@ -41,6 +44,10 @@ module_dir/mods.d/.
 
 Quality considerations
 ----------------------
- - Only standard studynotes are included (no charts, figures etc)
- - Tested to work with xiphos. There seem to be problems currently with andbible, for example. Trying to fix that...
+ - Studynotes, charts, figures etc OK
+ - Tested with Andbible & Xiphos - OK
 
+Known issues
+------------
+ - Andbible issue: verse links when there is verse range do not show correctly.
+ - If comment is for verse range, it is actually shown only for the first verse (all apps).
