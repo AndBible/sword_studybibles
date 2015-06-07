@@ -56,3 +56,4 @@ TODO
 ----
   - Add bible book intros into beginning of each book in commentary module
   - Make sword book module out of other articles
+  - Do something for verse range problem
