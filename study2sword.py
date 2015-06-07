@@ -339,17 +339,13 @@ def process_files(options,  input_dir):
         write_studynotes_into_osis(body, output_xml, osistext, tag_level)
 
 
-    if debug:
-        out2 = codecs.open('%s_pretty.xml'%input_dir, 'w', encoding='utf-8')
-        out2.write(output_xml.prettify())
-        out2.close()
-    else:
+    out2 = codecs.open('%s_pretty.xml'%input_dir, 'w', encoding='utf-8')
+    out2.write(output_xml.prettify())
+    out2.close()
+
+    if not debug:
         out = codecs.open('%s.xml'%input_dir, 'w', encoding='utf-8')
         out.write(unicode(output_xml))
-        out.close()
-
-        out = codecs.open('%s_pretty.xml'%input_dir, 'w', encoding='utf-8')
-        out.write(output_xml.prettify())
         out.close()
 
 
