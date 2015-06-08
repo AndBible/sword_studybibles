@@ -5,3 +5,4 @@
 *.xml
 /.idea/
 /global_mod/
+*.pyc
