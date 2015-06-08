@@ -1,4 +1,8 @@
 # encoding: utf-8
+"""
+    Copyright (C) 2015 Tuomas Airaksinen.
+    See LICENCE.txt
+"""
 
 import os, codecs, optparse
 from bs4 import BeautifulSoup, NavigableString, Tag

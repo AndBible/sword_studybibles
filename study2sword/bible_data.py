@@ -1,5 +1,5 @@
 """
-    Copyright (C) 2014 Tuomas Airaksinen.
+    Copyright (C) 2015 Tuomas Airaksinen.
     See LICENCE.txt
 """
 BOOKREFS = ['Gen', 'Exod', 'Lev', 'Num', 'Deut', 'Josh', 'Judg', 'Ruth', '1Sam', '2Sam', '1Kgs', '2Kgs', '1Chr',

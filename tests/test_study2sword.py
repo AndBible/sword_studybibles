@@ -1,5 +1,5 @@
 """
-    Copyright (C) 2014 Tuomas Airaksinen.
+    Copyright (C) 2015 Tuomas Airaksinen.
     See LICENCE.txt
 """
 
