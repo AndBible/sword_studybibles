@@ -5,9 +5,9 @@ MCADIR=modules/comments/zcom/mcan/
 ESVDIR=modules/comments/zcom/esvn/
 
 #generate OSIS
-python study2sword.py --title "The ESV Study Bible notes" --work_id "ESVN" esv --tag_level 0
-python study2sword.py --title "The ESV Global Study Bible notes" --work_id "GLBN" global --tag_level 0
-python study2sword.py --title "The McArthur Study Bible notes" --work_id "MCAN" mcarthur --tag_level 0
+python study2sword/study2sword.py --title "The ESV Study Bible notes" --work_id "ESVN" esv --tag_level 0
+python study2sword/study2sword.py --title "The ESV Global Study Bible notes" --work_id "GLBN" global --tag_level 0
+python study2sword/study2sword.py --title "The McArthur Study Bible notes" --work_id "MCAN" mcarthur --tag_level 0
 
 mkdir module_dir/$ESVDIR
 mkdir module_dir/$MCADIR
@@ -18,9 +18,9 @@ rm module_dir/$MCADIR/*
 rm module_dir/$GBLDIR/*
 
 # convert into sword module
-osis2mod module_dir/$ESVDIR esv.xml -v NRSV -z -b 3
-osis2mod module_dir/$GBLDIR global.xml -v NRSV -z -b 3
-osis2mod module_dir/$MCADIR mcarthur.xml -v NRSV -z -b 3
+osis2mod module_dir/$ESVDIR esv.xml -v NRSV -z -b 3 > /dev/null
+osis2mod module_dir/$GBLDIR global.xml -v NRSV -z -b 3 > /dev/null
+osis2mod module_dir/$MCADIR mcarthur.xml -v NRSV -z -b 3 > /dev/null
 
 #install locally
 rm -r ~/.sword/$ESVDIR
@@ -35,7 +35,7 @@ cp -r module_dir/$MCADIR/* ~/.sword/$MCADIR/
 cp -r module_dir/$GBLDIR/* ~/.sword/$GBLDIR/
 
 cp module_dir/mods.d/*.conf ~/.sword/mods.d/
-
+#exit 0
 #android
 ssh taandroid mkdir /sdcard/jsword/$ESVDIR
 ssh taandroid mkdir /sdcard/jsword/$MCADIR
