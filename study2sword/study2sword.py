@@ -81,21 +81,6 @@ class Ref(object):
     def __repr__(self):
         return 'Ref("%s")' % str(self)
 
-
-assert Ref('Rev.1.1') > Ref('Jude.1.1')
-assert Ref('Rev.1.2') > Ref('Rev.1.1')
-assert Ref('Rev.2.1') > Ref('Rev.1.1')
-assert Ref('Gen.1.1') < Ref('Jude.1.1')
-assert '%s' % Ref('Gen.1.1') == 'Gen.1.1'
-assert '%s' % Ref('Jude.1.1') == 'Jude.1.1'
-assert Ref('Gen.1.1') == Ref('Gen.1.1')
-assert Ref('Gen.1.1') in [Ref('Gen.1.1')]
-assert Ref('Gen.1.1') in {Ref('Gen.1.1'): 1}
-assert sorted([Ref('Gen.1.1'), Ref('Gen.2.1')]) == [Ref("Gen.1.1"), Ref("Gen.2.1")]
-assert sorted([Ref('Gen.1.1'), Ref('Exod.2.1')]) == [Ref("Gen.1.1"), Ref("Exod.2.1")]
-assert sorted([Ref('Rev.1.1'), Ref('Exod.2.1')]) == [Ref("Exod.2.1"), Ref("Rev.1.1")]
-
-
 def parse_studybible_reference(html_id):
     """
         Takes studybibles reference html_id, which is in the following formats:
@@ -145,14 +130,6 @@ def parse_studybible_reference(html_id):
         result.append('-'.join(refs))
     return ' '.join(result)
 
-
-assert parse_studybible_reference('n66002001-66003022.66002001-66003022') == 'Rev.2.1-Rev.3.22 Rev.2.1-Rev.3.22'
-assert parse_studybible_reference('n66002001a-66003022b') == 'Rev.2.1-Rev.3.22'
-assert parse_studybible_reference('n66002001-66003022') == 'Rev.2.1-Rev.3.22'
-assert parse_studybible_reference('n66001013') == 'Rev.1.13'
-assert parse_studybible_reference('n02023001-02023003.02023006-02023008') == 'Exod.23.1-Exod.23.3 Exod.23.6-Exod.23.8'
-
-
 def first_reference(ref):
     if ' ' in ref:
         ref = ref.split(' ')[0]
@@ -169,15 +146,6 @@ def last_reference(ref):
         ref = ref.split('-')[-1]
     r = tuple(ref.split('.'))
     return (r[0], int(r[1]), int(r[2]))
-
-
-assert first_reference('Gen.1.1-Gen.1.5') == ('Gen', 1, 1)
-assert last_reference('Gen.1.1-Gen.1.5') == ('Gen', 1, 5)
-assert first_reference('Gen.1.1-Gen.1.5 Gen.2.1') == ('Gen', 1, 1)
-assert last_reference('Gen.1.1-Gen.1.5 Gen.2.1') == ('Gen', 2, 1)
-assert first_reference('Gen.1.1-Gen.1.5 Gen.2.1-Gen.2.2') == ('Gen', 1, 1)
-assert last_reference('Gen.1.1-Gen.1.5 Gen.2.1-Gen.2.2') == ('Gen', 2, 2)
-
 
 def _expand_ranges(ref):
     """
@@ -235,14 +203,6 @@ def expand_ranges(ref):
     """ Make sure that expanded ranges are also sorted propertly"""
     r = _expand_ranges(ref)
     return ' '.join(str(j) for j in sorted([Ref(i) for i in set(r.split(' '))]))
-
-assert expand_ranges("Gen.2.4-Gen.2.6") == "Gen.2.4 Gen.2.5 Gen.2.6"
-assert expand_ranges("Gen.1.30-Gen.2.1") == "Gen.1.30 Gen.1.31 Gen.2.1"
-assert expand_ranges("Gen.50.25-Exod.1.2") == "Gen.50.25 Gen.50.26 Exod.1.1 Exod.1.2"
-assert expand_ranges("Gen.50.1-Gen.50.26") + ' ' + expand_ranges("Exod.1.1-Exod.2.5") == expand_ranges('Gen.50.1-Exod.2.5')
-assert '1Chr.1.1' not in expand_ranges('1Chr.10.1-2Chr.9.31')
-assert expand_ranges("Gen.2.4-Gen.2.6 Gen.1.30-Gen.2.1") == "Gen.1.30 Gen.1.31 Gen.2.1 Gen.2.4 Gen.2.5 Gen.2.6"
-
 
 class Stydy2Osis(object):
     def fix_bibleref_links(self, input_soup):
