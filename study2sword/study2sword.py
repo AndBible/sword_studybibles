@@ -476,6 +476,8 @@ class Stydy2Osis(object):
 
             ref_text = link_target_comment.find('reference').text.strip('., ')
             title_text.replace(ref_text, '')
+            if len(title_text) > 50:
+                title_text = title_text[:50].rsplit(' ', 1)[0]+'...'
             if link_target_comment.find('figure'):
                 title_text += ', FIGURE'
 
@@ -483,7 +485,7 @@ class Stydy2Osis(object):
                 title_text += ', TABLE'
 
             link_tag = self.root_soup.new_tag('reference', osisRef=self.options.work_id + ':' + str(verses(link_target_comment)[0]), cls='reference_links')
-            note_title = 'See also note on %s'%ref_text.strip()
+            note_title = 'Cf. %s'%ref_text.strip()
             if title_text:
                 note_title += ' (%s)'%title_text.strip()
 
