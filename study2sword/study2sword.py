@@ -1,7 +1,7 @@
 # encoding: utf-8
 
 import os, codecs, optparse
-from bs4 import BeautifulSoup, NavigableString
+from bs4 import BeautifulSoup, NavigableString, Tag
 import jinja2
 
 TAGS_NONE = 0
@@ -33,12 +33,9 @@ class IllegalReference(Exception):
 
 
 def verses(a):
-    try:
-        return sorted([Ref(i) for i in a['annotateRef'].split(' ')])
-    except Exception:
-        import ipdb
-        ipdb.set_trace()
-
+    if isinstance(a, Tag):
+        a = a['annotateRef']
+    return sorted([Ref(i) for i in a.split(' ')])
 
 def singleton(cls):
     instances = {}
@@ -62,6 +59,18 @@ class Ref(object):
         chapint = int(chap)
         verseint = int(verse)
         self.numref = (bookint, chapint, verseint)
+
+    @property
+    def book(self):
+        return BOOKREFS[self.numref[0]]
+
+    @property
+    def chapter(self):
+        return self.numref[1]
+
+    @property
+    def verse(self):
+        return self.numref[2]
 
     def __unicode__(self):
         return u'%s.%s.%s' % (BOOKREFS[self.numref[0]], self.numref[1], self.numref[2])
@@ -339,64 +348,63 @@ class Stydy2Osis(object):
             n.name = 'title'
 
     def adjust_studynotes(self, body):
-        for n in body.children:
-            if n.name in ['h1', 'hr']:
+        for rootlevel_tag in body.children:
+            if rootlevel_tag.name in ['h1', 'hr']:
                 continue
-
-            elif n.name == 'div':
-                cls = n['class']
+            elif rootlevel_tag.name == 'div':
+                cls = rootlevel_tag['class']
                 if cls == 'object chart':
-                    self.fix_table(n)
+                    self.fix_table(rootlevel_tag)
                 elif cls == 'object map':
-                    self.fix_figure(n)
+                    self.fix_figure(rootlevel_tag)
                 elif cls == 'object illustration':
-                    self.fix_figure(n)
+                    self.fix_figure(rootlevel_tag)
                 elif cls == 'object diagram':
-                    self.fix_figure(n)
+                    self.fix_figure(rootlevel_tag)
                 elif cls == 'fact':
-                    self.fix_fact(n)
+                    self.fix_fact(rootlevel_tag)
                 elif cls == 'profile':
-                    self.fix_fact(n)
+                    self.fix_fact(rootlevel_tag)
                 elif cls == 'object info':
-                    self.fix_table(n)
+                    self.fix_table(rootlevel_tag)
                 else:
                     raise Exception('Unknown class %s' % cls)
-            elif n.name == 'p':
-                if n['class'] not in ['outline-1', 'outline-3', 'outline-4', 'study-note-continue', 'study-note']:
-                    raise Exception('not handled %s' % n['class'])
-            elif isinstance(n, NavigableString):
+            elif rootlevel_tag.name == 'p':
+                if rootlevel_tag['class'] not in ['outline-1', 'outline-3', 'outline-4', 'study-note-continue', 'study-note']:
+                    raise Exception('not handled %s' % rootlevel_tag['class'])
+            elif isinstance(rootlevel_tag, NavigableString):
                 continue
-            elif n.name == 'table':
-                n = n.wrap(self.root_soup.new_tag('div', type='paragraph'))
-                self.fix_table(n)
-            elif n.name == 'ol':
-                n = n.wrap(self.root_soup.new_tag('div', type='paragraph'))
+            elif rootlevel_tag.name == 'table':
+                rootlevel_tag = rootlevel_tag.wrap(self.root_soup.new_tag('div', type='paragraph'))
+                self.fix_table(rootlevel_tag)
+            elif rootlevel_tag.name == 'ol':
+                rootlevel_tag = rootlevel_tag.wrap(self.root_soup.new_tag('div', type='paragraph'))
             else:
-                raise Exception('not handled %s' % n)
+                raise Exception('not handled %s' % rootlevel_tag)
 
-            self.fix_studynote_text_tags(n)
-            n.name = 'div'
-            n['type'] = 'paragraph'
+            self.fix_studynote_text_tags(rootlevel_tag)
+            rootlevel_tag.name = 'div'
+            rootlevel_tag['type'] = 'paragraph'
 
-            if 'id' in n.attrs:
+            if 'id' in rootlevel_tag.attrs:
                 try:
-                    ref = parse_studybible_reference(n['id'])
+                    ref = parse_studybible_reference(rootlevel_tag['id'])
                 except IllegalReference:
-                    print 'not writing', n
+                    print 'not writing', rootlevel_tag
                     continue
 
-                del n['id']
+                del rootlevel_tag['id']
 
                 new_div = self.root_soup.new_tag('studynote')
                 new_div['type'] = 'section'
                 new_div['annotateType'] = 'commentary'
                 new_div['annotateRef'] = ref
 
-                n.wrap(new_div)
+                rootlevel_tag.wrap(new_div)
             else:
-                previous = n.find_previous('studynote')
-                n.extract()
-                previous.append(n)
+                previous = rootlevel_tag.find_previous('studynote')
+                rootlevel_tag.extract()
+                previous.append(rootlevel_tag)
 
     def write_studynotes_into_osis(self, input_html, osistext, tag_level):
         bookdivs = {}
@@ -429,7 +437,6 @@ class Stydy2Osis(object):
             [osistext, bookdiv, chapdiv, verdiv][tag_level].append(n)
 
     def add_reference_link(self, comment, link_target_comment):
-        #assert 'removed' not in link_target_comment.attrs
         def get_final_comment(com):
             if com.replaced_by:
                 return get_final_comment(com.replaced_by)
@@ -450,9 +457,33 @@ class Stydy2Osis(object):
             link_item = self.root_soup.new_tag('item')
             links.append(link_item)
 
-            title_ref_text = link_target_comment.find('reference').text
+            bold_tag = None
+            for i in xrange(4):
+                if bold_tag:
+                    break
+                bold_tag = link_target_comment.find('hi', class_='outline-%s'%i, type='bold')
+            if not bold_tag:
+                bold_tag = link_target_comment.find('title')
+
+            title_text = ''
+            if bold_tag:
+                title_text = bold_tag.text.strip('., ')
+
+
+            ref_text = link_target_comment.find('reference').text.strip('., ')
+            title_text.replace(ref_text, '')
+            if link_target_comment.find('figure'):
+                title_text += ', FIGURE'
+
+            if link_target_comment.find('table'):
+                title_text += ', TABLE'
+
             link_tag = self.root_soup.new_tag('reference', osisRef=self.options.work_id + ':' + str(verses(link_target_comment)[0]), cls='reference_links')
-            link_tag.append(self.root_soup.new_string('See note on ' + title_ref_text))
+            note_title = 'See also note on %s'%ref_text.strip()
+            if title_text:
+                note_title += ' (%s)'%title_text.strip()
+
+            link_tag.append(self.root_soup.new_string(note_title))
             link_item.append(link_tag)
 
     def merge_into_previous_comment(self, comment, prev_comment):
@@ -468,17 +499,17 @@ class Stydy2Osis(object):
 
         new_verses = sorted(set(verses(comment) + verses(prev_comment)))
 
-        for v2 in new_verses:
-            prev_comment2 = self.verse_comment_dict.get(v2)
+        for v in new_verses:
+            prev_comment2 = self.verse_comment_dict.get(v)
             if not prev_comment2:
                 assert 'removed' not in prev_comment.attrs
-                self.verse_comment_dict[v2] = prev_comment
+                self.verse_comment_dict[v] = prev_comment
             elif prev_comment2 in [comment, prev_comment]:
-                self.verse_comment_dict[v2] = prev_comment
+                self.verse_comment_dict[v] = prev_comment
             else:
                 # some earlier, merged comment
                 assert verses(prev_comment2)[0]<new_verses[0]
-                self.verse_comment_dict[v2] = prev_comment
+                self.verse_comment_dict[v] = prev_comment
 
 
         prev_comment['origRef'] += ' + ' + comment['origRef']
@@ -500,7 +531,17 @@ class Stydy2Osis(object):
             comment['origRef'] = comment['annotateRef']
             comment.links = []
             comment.replaced_by = None
-            comment['annotateRef'] = expand_ranges(comment['annotateRef'])
+
+            vs = verses(expand_ranges(comment['annotateRef']))
+
+            # make figures and tables linked to some larger range: rest of this chapter as well as whole next chapter
+            if comment.find('figure') or comment.find('table'):
+                first = vs[0]
+                last = Ref('%s.%s.%s'%(v.book, min(v.chapter+1, LAST_CHAPTERS[v.book]), CHAPTER_LAST_VERSES['%s.%s'%(first.book, first.chapter)]))
+                vs2 = verses(expand_ranges('%s-%s'%(first, last)))
+                vs = sorted(set(vs+vs2))
+
+            comment['annotateRef'] = ' '.join(str(i) for i in vs)
             for v in verses(comment):
                 vl = self.verse_comments_all_dict.get(v)
                 if not vl:
