@@ -44,16 +44,14 @@ module_dir/mods.d/.
 
 Quality considerations
 ----------------------
- - Studynotes, charts, figures etc OK
- - Tested with Andbible & Xiphos - OK
+ - Studynotes, charts, figures etc
+ - Tested with Andbible & Xiphos
+ - Verse ranges fixed and links addedK
 
 Known issues
 ------------
- - Andbible issue: verse links when there is verse range do not show correctly.
- - If comment is for verse range, it is actually shown only for the first verse (all apps).
 
 TODO
 ----
   - Add bible book intros into beginning of each book in commentary module
   - Make sword book module out of other articles
-  - Do something for verse range problem

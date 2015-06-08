@@ -6,3 +6,4 @@
 /.idea/
 /global_mod/
 *.pyc
+/UNKNOWN.egg-info/
