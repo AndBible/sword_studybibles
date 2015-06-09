@@ -41,7 +41,7 @@ def verses(a):
         a = a['annotateRef']
     return sorted([Ref(i) for i in a.split(' ')])
 
-def singleton(cls):
+def cached_refs(cls):
     instances = {}
 
     def getinstance(ref_string):
@@ -57,7 +57,7 @@ def singleton(cls):
 class LastVerse(Exception):
     pass
 
-@singleton
+@cached_refs
 class Ref(object):
     def __init__(self, ref_string):
         book, chap, verse = ref_string.split('.')
