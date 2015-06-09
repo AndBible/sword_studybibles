@@ -1,13 +1,13 @@
 Study bibles into OSIS / sword modules BETA
 ===========================================
 
-This script (study2sword.py) converts epub-type files into OSIS xml files, that can be further converted into
+This script (study2sword.py) converts ePub-type files into OSIS xml files, that can be further converted into
 sword module.
 
 ePub file for Global Study Bible (abreviated ESV study bible) can be downloaded for free from http://www.esv.org/e-books/.
 
-ePub-files for ESV Study bible and McArthur Study Bible can be downloaded from Crossway
-(https://www.crossway.org/customer/library/#product_type=Ebook) if you have purchased them either
+ePub-files for ESV Study Bible and McArthur Study Bible (and some other study bibles too)
+can be downloaded from Crossway (https://www.crossway.org/customer/library/#product_type=Ebook) if you have purchased them either
 as a physical book or only digitally. It is likely that other ePub bible commentaries can be handled by
 this tool (if not directly, with smallish modifications to the code).
 
