@@ -104,3 +104,6 @@ def test_ref():
     assert sorted([Ref('Gen.1.1'), Ref('Gen.2.1')]) == [Ref("Gen.1.1"), Ref("Gen.2.1")]
     assert sorted([Ref('Gen.1.1'), Ref('Exod.2.1')]) == [Ref("Gen.1.1"), Ref("Exod.2.1")]
     assert sorted([Ref('Rev.1.1'), Ref('Exod.2.1')]) == [Ref("Exod.2.1"), Ref("Rev.1.1")]
+    assert Ref('Gen.1.1').next() == Ref('Gen.1.2')
+    assert Ref('Gen.1.31').next() == Ref('Gen.2.1')
+    assert Ref('Gen.50.26').next() == Ref('Exod.1.1')

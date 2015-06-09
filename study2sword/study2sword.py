@@ -54,6 +54,8 @@ def singleton(cls):
 
     return getinstance
 
+class LastVerse(Exception):
+    pass
 
 @singleton
 class Ref(object):
@@ -68,6 +70,9 @@ class Ref(object):
     def book(self):
         return BOOKREFS[self.numref[0]]
 
+    @property
+    def book_int(self):
+        return self.numref[0]
     @property
     def chapter(self):
         return self.numref[1]
@@ -93,6 +98,25 @@ class Ref(object):
 
     def __repr__(self):
         return 'Ref("%s")' % str(self)
+
+    def next(self):
+        if self.verse < CHAPTER_LAST_VERSES['%s.%s'%(self.book, self.chapter)]:
+            return Ref('%s.%s.%s'%(self.book, self.chapter, self.verse + 1))
+        elif self.chapter < LAST_CHAPTERS[self.book]:
+            return Ref('%s.%s.%s'%(self.book, self.chapter + 1, 1))
+        elif self.book != 'Rev':
+            return Ref('%s.%s.%s'%(BOOKREFS[self.book_int+1], 1, 1))
+        else:
+            raise LastVerse
+
+    def __iter__(self):
+        n = self
+        while True:
+            try:
+                n = n.next()
+            except LastVerse:
+                break
+            yield n
 
 def parse_studybible_reference(html_id):
     """
@@ -476,8 +500,8 @@ class Stydy2Osis(object):
 
             ref_text = link_target_comment.find('reference').text.strip('., ')
             title_text.replace(ref_text, '')
-            if len(title_text) > 50:
-                title_text = title_text[:50].rsplit(' ', 1)[0]+'...'
+            if len(title_text) > 35:
+                title_text = title_text[:35].rsplit(' ', 1)[0]+'...'
             if link_target_comment.find('figure'):
                 title_text += ', FIGURE'
 
