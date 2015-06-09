@@ -4,33 +4,35 @@ Study bibles into OSIS / sword modules BETA
 This script (study2sword.py) converts epub-type files into OSIS xml files, that can be further converted into
 sword module.
 
-Epub file for Global Study Bible (abreviated ESV study bible) can be downloaded for free from http://www.esv.org/e-books/.
+ePub file for Global Study Bible (abreviated ESV study bible) can be downloaded for free from http://www.esv.org/e-books/.
 
-Epub-files for ESV Study bible and McArthur Study Bible can be downloaded from crossway 
+ePub-files for ESV Study bible and McArthur Study Bible can be downloaded from Crossway
 (https://www.crossway.org/customer/library/#product_type=Ebook) if you have purchased them either
-as a physical book or only digitally. 
+as a physical book or only digitally. It is likely that other ePub bible commentaries can be handled by
+this tool (if not directly, with smallish modifications to the code).
 
 I'm proceeding to get free Global Study Bible module distributed via crosswire etc. and proprietary
-modules via crossway's e-library.
+modules via Crossway's e-library. At the moment I do not have rights to distribute any of them, but you
+may use this tool to get your module.
 
-Installing and converting to sword module
+Installing and converting to SWORD module
 -----------------------------------------
 
 Install python packages beautifulsoup4 and jinja2:
 
-   pip install beautifulsoup4
-   pip install jinja2
-   pip install lxml
+    pip install beautifulsoup4
+    pip install jinja2
+    pip install lxml
 
 Unzip your epub file:
 
-   mkdir modulename
-   cd modulename
-   unzip PATH_TO_MY.epub
+    mkdir modulename
+    cd modulename
+    unzip PATH_TO_MY.epub
 
 Run command
 
-python study2sword modulename
+    python study2sword modulename
 
 This will create OSIS XML file modulename.xml.
 
@@ -46,7 +48,7 @@ Quality considerations
 ----------------------
  - Studynotes, charts, figures etc
  - Tested with Andbible & Xiphos
- - Verse ranges fixed and links addedK
+ - Verse ranges fixed and links added
 
 Known issues
 ------------
