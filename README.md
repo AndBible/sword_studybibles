@@ -52,6 +52,8 @@ Quality considerations
 
 Known issues
 ------------
+ - By default verse linking is hard-wired to ESVS module. This is to workaround with Andbible
+   <reference> rendering bug (or feature - this is still to be disputed).
 
 TODO
 ----
