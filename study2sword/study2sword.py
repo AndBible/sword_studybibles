@@ -5,6 +5,7 @@
 """
 
 import os, codecs, optparse
+from functools import wraps
 from bs4 import BeautifulSoup, NavigableString, Tag
 import jinja2
 
@@ -44,14 +45,18 @@ def verses(a):
 def cached_refs(cls):
     instances = {}
 
+    @wraps(cls)
     def getinstance(ref_string):
         assert ref_string
         if isinstance(ref_string, (list, tuple)):
             ref_string = '%s.%s.%s' % tuple(ref_string)
+        if isinstance(ref_string, Ref.orig_cls):
+            return ref_string
+        assert isinstance(ref_string, str)
         if ref_string not in instances:
             instances[ref_string] = cls(ref_string)
         return instances[ref_string]
-
+    getinstance.orig_cls = cls
     return getinstance
 
 class LastVerse(Exception):
@@ -87,11 +92,11 @@ class Ref(object):
     def __str__(self):
         return str(unicode(self))
 
-    def __lt__(self, other):
-        return self.numref < other.numref
-
     def __gt__(self, other):
         return self.numref > other.numref
+
+    def __ge__(self, other):
+        return self.numref > other.numref or self.numref == other.numref
 
     def __eq__(self, other):
         return self.numref == other.numref
@@ -109,14 +114,24 @@ class Ref(object):
         else:
             raise LastVerse
 
-    def __iter__(self):
+    def iter(self):
         n = self
         while True:
+            yield n
             try:
                 n = n.next()
             except LastVerse:
                 break
-            yield n
+
+def refrange(start, stop):
+    start = Ref(start)
+    stop = Ref(stop)
+    if stop < start:
+        return
+    for i in start.iter():
+        if i >= stop:
+            return
+        yield i
 
 def parse_studybible_reference(html_id):
     """
@@ -602,6 +617,9 @@ class Stydy2Osis(object):
                 else:
                     assert 'removed' not in comment.attrs
                     self.verse_comment_dict[v] = comment
+
+        #for v in Ref('Gen.1.1').iter():
+        #    comment = self.verse_comment_dict.get(v)
 
         # Add 'see also' reference links to comments with larger range
         for ref, comment_set in self.verse_comments_all_dict.iteritems():
