@@ -67,6 +67,39 @@ def test_merge_comments():
     assert 'blah1' in link3.text
     assert 'blah2' in link3.text
 
+def test_commentless_verse_within_rangecomment():
+    class options:
+        title = 'ESVN'
+        work_id = 'ESVN'
+
+    osistext = BeautifulSoup("""
+        <osisText>
+        <div annotateRef="Gen.1.1-Gen.1.4" annotateType="commentary"><reference>blah1</reference></div>
+        <div annotateRef="Gen.1.2" annotateType="commentary"><reference>blah2</reference></div>
+
+        <div annotateRef="Gen.1.4" annotateType="commentary"><reference>blah4</reference></div>
+        </osisText>
+    """, 'xml')
+    # here, we want to create empty comment in verse 3 and add link there (instead of linking to verse 1).
+
+    s = Stydy2Osis(options)
+    s.root_soup = osistext
+    s.fix_overlapping_ranges(osistext)
+    result = osistext.prettify()
+    print result
+    com1, com2, com3, com4 = osistext.find_all('div', annotateType='commentary')
+    assert com1['annotateRef'] == "Gen.1.1"
+    assert com2['annotateRef'] == "Gen.1.2"
+    assert com3['annotateRef'] == "Gen.1.3"
+    assert com3['annotateRef'] == "Gen.1.4"
+
+    link1, link2, link3, link4 = [i.find('list', cls='reference_links') for i in [com1,com2,com3, com4]]
+    assert not link1
+    assert 'blah1' in link2.text
+    assert 'blah1' in link3.text
+    assert 'blah1' in link4.text
+
+
     #print result
 def test_expand_ranges():
     assert expand_ranges("Gen.2.4-Gen.2.6") == "Gen.2.4 Gen.2.5 Gen.2.6"

@@ -3,6 +3,7 @@
     Copyright (C) 2015 Tuomas Airaksinen.
     See LICENCE.txt
 """
+from copy import copy
 
 import os, codecs, optparse
 from functools import wraps
@@ -132,6 +133,9 @@ def refrange(start, stop):
         if i >= stop:
             return
         yield i
+
+def references_to_string(vs):
+    return ' '.join(str(i) for i in sorted(vs))
 
 def parse_studybible_reference(html_id):
     """
@@ -545,19 +549,24 @@ class Stydy2Osis(object):
         new_verses = sorted(set(verses(comment) + verses(prev_comment)))
 
         for v in new_verses:
-            prev_comment2 = self.verse_comment_dict.get(v)
-            if not prev_comment2:
+            existing_comment = self.verse_comment_dict.get(v)
+            if not existing_comment:
                 assert 'removed' not in prev_comment.attrs
                 self.verse_comment_dict[v] = prev_comment
-            elif prev_comment2 in [comment, prev_comment]:
+            elif existing_comment == prev_comment:
+                pass
+            elif existing_comment == comment:
                 self.verse_comment_dict[v] = prev_comment
             else:
                 # some earlier, merged comment
-                assert verses(prev_comment2)[0]<new_verses[0]
+                assert verses(existing_comment)[0]<new_verses[0]
+                verses_for_existing = verses(existing_comment)
+                verses_for_existing.remove(v)
+                existing_comment['annotateRef'] = references_to_string(verses_for_existing)
                 self.verse_comment_dict[v] = prev_comment
 
 
-        prev_comment['origRef'] += ' + ' + comment['origRef']
+        prev_comment['origRef'] += ' ' + comment['origRef']
         prev_comment['annotateRef'] = ' '.join(str(i) for i in new_verses)
 
     def fix_overlapping_ranges(self, osistext):
@@ -618,8 +627,32 @@ class Stydy2Osis(object):
                     assert 'removed' not in comment.attrs
                     self.verse_comment_dict[v] = comment
 
-        #for v in Ref('Gen.1.1').iter():
-        #    comment = self.verse_comment_dict.get(v)
+        all_comments = osistext.find_all('div', annotateType='commentary')
+        for comment in all_comments:
+            orig_verses = verses(expand_ranges(comment['origRef']))
+            actual_verses = verses(comment)
+            new_actual_verses = copy(actual_verses)
+            assert orig_verses[0] == actual_verses[0]
+
+            for ov in orig_verses:
+                if ov not in actual_verses:
+                    break
+
+            breaking_point = orig_verses.index(ov)
+            if breaking_point == 0:
+                continue
+            remove_verses = orig_verses[breaking_point:]
+            for rv in remove_verses:
+                if rv in actual_verses:
+                    new_actual_verses.remove(rv)
+                    assert self.verse_comment_dict[rv] == comment
+                    new_comment = self.create_empty_comment(rv)
+                    self.verse_comment_dict[rv] = new_comment
+                    comment.insert_after(new_comment)
+                    #assert len(self.verse_comments_all_dict[rv]) == 0
+                    #self.verse_comments_all_dict[rv].add(comment)
+
+            comment['annotateRef'] = ' '.join(str(i) for i in new_actual_verses)
 
         # Add 'see also' reference links to comments with larger range
         for ref, comment_set in self.verse_comments_all_dict.iteritems():
@@ -635,6 +668,14 @@ class Stydy2Osis(object):
             ref_links_list.clear()
             for i in items:
                 ref_links_list.append(i)
+
+    def create_empty_comment(self, verse):
+        comment = self.root_soup.new_tag('div', annotateType='commentary', type='section', annotateRef=str(verse), new_empty='1')
+        comment.links = []
+        comment['origRef'] = comment['annotateRef']
+        comment.replaced_by = None
+
+        return comment
 
     def __init__(self, options=None, input_dir=None):
         self.options = options
