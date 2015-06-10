@@ -32,7 +32,7 @@ Unzip your epub file:
 
 Run command
 
-    python study_bible_to_osis.py modulename
+    python studybible_to_osis.py modulename
 
 This will create OSIS XML file modulename.xml.
 
