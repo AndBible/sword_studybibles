@@ -3,8 +3,8 @@
     See LICENCE.txt
 """
 
-from study2sword.study2osis import Stydy2Osis, parse_studybible_reference
-from study2sword.bibleref import Ref, expand_ranges, first_reference, last_reference, refrange
+from study2osis.study2osis import Stydy2Osis, parse_studybible_reference
+from study2osis.bibleref import Ref, expand_ranges, first_reference, last_reference, refrange
 from bs4 import BeautifulSoup
 
 def com_text(osistext, ref):

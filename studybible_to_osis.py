@@ -7,7 +7,7 @@
 """
 
 import optparse
-from study2sword.study2osis import Stydy2Osis
+from study2osis.study2osis import Stydy2Osis
 
 
 if __name__ == '__main__':
