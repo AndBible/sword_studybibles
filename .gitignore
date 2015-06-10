@@ -7,3 +7,6 @@
 /global_mod/
 *.pyc
 /UNKNOWN.egg-info/
+/build/
+/dist/
+/study2sword.egg-info/

@@ -3,14 +3,32 @@
     See LICENCE.txt
 """
 
-from study2sword.study2sword import *
+from study2sword.study2osis import Stydy2Osis, parse_studybible_reference
+from study2sword.bibleref import Ref, expand_ranges, first_reference, last_reference, refrange
 from bs4 import BeautifulSoup
 
-def test_overlapping_1():
-    class options:
-        title = 'ESVN'
-        work_id = 'ESVN'
+def com_text(osistext, ref):
+    com = osistext.find_all('div', annotateRef=str(ref))
+    assert len(com) == 1
+    com = com[0]
+    return com.text
 
+def link_refs(osistext, ref):
+    com = osistext.find_all('div', annotateRef=str(ref))
+    assert len(com) == 1
+    com = com[0]
+    link = com.find('list', cls='reference_links')
+    if link:
+        return set([Ref(i['osisRef'][5:]) for i in link.find_all('reference')])
+    else:
+        return set()
+
+class options:
+    title = 'ESVN'
+    work_id = 'ESVN'
+    no_nonadj = False
+
+def test_overlapping_1():
     osistext = BeautifulSoup("""
         <osisText>
         <div annotateRef="Gen.1.1-Gen.1.4" annotateType="commentary"><reference>blah1</reference></div>
@@ -20,27 +38,16 @@ def test_overlapping_1():
     """, 'xml')
 
     s = Stydy2Osis(options)
-    s.root_soup = osistext
-    s.fix_overlapping_ranges(osistext)
+    s.root_soup = s.osistext = osistext
+    s.fix_overlapping_ranges()
     result = osistext.prettify()
     print result
-    com1, com2, com3 = osistext.find_all('div', annotateType='commentary')
-    assert com1['annotateRef'] == "Gen.1.1"
-    assert com2['annotateRef'] == "Gen.1.2 Gen.1.4"
-    assert com3['annotateRef'] == "Gen.1.3"
-
-    link1, link2, link3 = [i.find('list', cls='reference_links') for i in [com1,com2,com3]]
-    assert not link1
-    assert 'blah1' in link2.text
-    assert 'blah3' not in link2.text
-    assert 'blah1' in link3.text
-    assert 'blah2' in link3.text
+    assert link_refs(osistext, 'Gen.1.1') == set()
+    assert link_refs(osistext, 'Gen.1.2') == {Ref('Gen.1.1')}
+    assert link_refs(osistext, 'Gen.1.3') == {Ref('Gen.1.1'), Ref('Gen.1.2')}
+    assert link_refs(osistext, 'Gen.1.4') == {Ref('Gen.1.1'), Ref('Gen.1.2')}
 
 def test_merge_comments():
-    class options:
-        title = 'ESVN'
-        work_id = 'ESVN'
-
     osistext = BeautifulSoup("""
         <osisText>
         <div annotateRef="Gen.1.1-Gen.1.4" annotateType="commentary"><reference>blah1</reference></div>
@@ -51,27 +58,16 @@ def test_merge_comments():
     """, 'xml')
 
     s = Stydy2Osis(options)
-    s.root_soup = osistext
-    s.fix_overlapping_ranges(osistext)
+    s.root_soup = s.osistext = osistext
+    s.fix_overlapping_ranges()
     result = osistext.prettify()
     print result
-    com1, com2, com3 = osistext.find_all('div', annotateType='commentary')
-    assert com1['annotateRef'] == "Gen.1.1"
-    assert com2['annotateRef'] == "Gen.1.2 Gen.1.4" #merged comments 2 % 3
-    assert com3['annotateRef'] == "Gen.1.3"
+    assert link_refs(osistext, 'Gen.1.1') == set()
+    assert link_refs(osistext, 'Gen.1.2') == {Ref('Gen.1.1')}
+    assert link_refs(osistext, 'Gen.1.4') == {Ref('Gen.1.1'), Ref('Gen.1.2')}
 
-    link1, link2, link3 = [i.find('list', cls='reference_links') for i in [com1,com2,com3]]
-    assert not link1
-    assert 'blah1' in link2.text
-    assert 'blah3' not in link2.text
-    assert 'blah1' in link3.text
-    assert 'blah2' in link3.text
 
 def test_commentless_verse_within_rangecomment():
-    class options:
-        title = 'ESVN'
-        work_id = 'ESVN'
-
     osistext = BeautifulSoup("""
         <osisText>
         <div annotateRef="Gen.1.1-Gen.1.4" annotateType="commentary"><reference>blah1</reference></div>
@@ -83,22 +79,36 @@ def test_commentless_verse_within_rangecomment():
     # here, we want to create empty comment in verse 3 and add link there (instead of linking to verse 1).
 
     s = Stydy2Osis(options)
-    s.root_soup = osistext
-    s.fix_overlapping_ranges(osistext)
+    s.root_soup = s.osistext = osistext
+    s.fix_overlapping_ranges()
     result = osistext.prettify()
     print result
-    com1, com2, com3, com4 = osistext.find_all('div', annotateType='commentary')
-    assert com1['annotateRef'] == "Gen.1.1"
-    assert com2['annotateRef'] == "Gen.1.2"
-    assert com3['annotateRef'] == "Gen.1.3"
-    assert com3['annotateRef'] == "Gen.1.4"
+    assert link_refs(osistext, 'Gen.1.1') == set()
+    assert link_refs(osistext, 'Gen.1.2') == {Ref('Gen.1.1')}
+    assert link_refs(osistext, 'Gen.1.3') == {Ref('Gen.1.1')}
+    assert link_refs(osistext, 'Gen.1.4') == {Ref('Gen.1.1')}
 
-    link1, link2, link3, link4 = [i.find('list', cls='reference_links') for i in [com1,com2,com3, com4]]
-    assert not link1
-    assert 'blah1' in link2.text
-    assert 'blah1' in link3.text
-    assert 'blah1' in link4.text
+def test_adjacent_verses():
+    osistext = BeautifulSoup("""
+        <osisText>
+        <div annotateRef="Gen.1.1-Gen.1.4" annotateType="commentary"><reference>blah1</reference></div>
+        <div annotateRef="Gen.1.2" annotateType="commentary"><reference>blah2</reference></div>
 
+        <div annotateRef="Gen.1.4-Gen.1.6" annotateType="commentary"><reference>blah4</reference></div>
+        </osisText>
+    """, 'xml')
+
+    s = Stydy2Osis(options)
+    s.root_soup = s.osistext = osistext
+    s.fix_overlapping_ranges()
+    result = osistext.prettify()
+    print result
+    assert link_refs(osistext, 'Gen.1.1') == set()
+    assert link_refs(osistext, 'Gen.1.2') == {Ref('Gen.1.1')}
+    assert link_refs(osistext, 'Gen.1.3') == {Ref('Gen.1.1')}
+    assert link_refs(osistext, 'Gen.1.4 Gen.1.5 Gen.1.6') == {Ref('Gen.1.1')}
+    #assert link_refs(osistext, 'Gen.1.5') == set()
+    #assert link_refs(osistext, 'Gen.1.6') == set()
 
     #print result
 def test_expand_ranges():

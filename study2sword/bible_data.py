@@ -2,6 +2,26 @@
     Copyright (C) 2015 Tuomas Airaksinen.
     See LICENCE.txt
 """
+
+
+def get_verse_ranges():
+    """ get data for CHAPTER_LST_VERSES and LAST_CHAPTERS from ESVS osis file"""
+    from bs4 import BeautifulSoup
+    from .bibleref import Ref
+
+    bs = BeautifulSoup(open('esvs.osis').read(), 'xml')
+    print 'reading done'
+    verse_nums = {}
+    chap_nums = {}
+    for v in bs.find_all('verse'):
+        ref = Ref(v['osisID'])
+        chapref = '%s.%s' % (BOOKREFS[ref.numref[0]], ref.numref[1])
+        verse_nums[chapref] = max(ref.numref[2], verse_nums.get(chapref, 0))
+        bookref = BOOKREFS[ref.numref[0]]
+        chap_nums[bookref] = max(ref.numref[1], chap_nums.get(bookref, 0))
+    return chap_nums, verse_nums
+
+
 BOOKREFS = ['Gen', 'Exod', 'Lev', 'Num', 'Deut', 'Josh', 'Judg', 'Ruth', '1Sam', '2Sam', '1Kgs', '2Kgs', '1Chr',
             '2Chr', 'Ezra', 'Neh', 'Esth', 'Job', 'Ps', 'Prov', 'Eccl', 'Song', 'Isa', 'Jer', 'Lam', 'Ezek', 'Dan',
             'Hos', 'Joel', 'Amos', 'Obad', 'Jonah', 'Mic', 'Nah', 'Hab', 'Zeph', 'Hag', 'Zech', 'Mal', 'Matt', 'Mark',

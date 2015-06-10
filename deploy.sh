@@ -5,10 +5,10 @@ MCADIR=modules/comments/zcom/mcan/
 ESVDIR=modules/comments/zcom/esvn/
 
 #generate OSIS
-python study2sword/study2sword.py --title "The ESV Study Bible notes" --work_id "ESVN" esv --tag_level 0
-python study2sword/study2sword.py --title "The ESV Global Study Bible notes" --work_id "GLBN" global --tag_level 0
-python study2sword/study2sword.py --title "The McArthur Study Bible notes" --work_id "MCAN" mcarthur --tag_level 0
-
+python study2sword.py --title "The ESV Study Bible notes" --work_id "ESVN" esv --tag_level 0
+python study2sword.py --title "The ESV Global Study Bible notes" --work_id "GLBN" global --tag_level 0
+python study2sword.py --title "The McArthur Study Bible notes" --work_id "MCAN" mcarthur --tag_level 0
+#exit 0
 mkdir module_dir/$ESVDIR
 mkdir module_dir/$MCADIR
 mkdir module_dir/$GBLDIR
