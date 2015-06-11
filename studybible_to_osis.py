@@ -7,7 +7,7 @@
 """
 
 import optparse
-from study2osis.study2osis import Stydy2Osis
+from study2osis.study2osis import Study2Osis
 from ipdb import launch_ipdb_on_exception
 
 
@@ -32,7 +32,7 @@ if __name__ == '__main__':
     if len(args) == 1:
         input_dir = args[0]
         with launch_ipdb_on_exception():
-            o = Stydy2Osis(options)
+            o = Study2Osis(options)
             o.process_files(input_dir)
     else:
         parser.print_help()

@@ -72,7 +72,7 @@ def dict_to_options(opts):
     Options.__dict__ = opts
     return Options
 
-class Stydy2Osis(FixOverlappingVersesMixin, IOMixin):
+class Study2Osis(FixOverlappingVersesMixin, IOMixin):
     def __init__(self, options):
         if isinstance(options, dict):
             options = dict_to_options(options)
