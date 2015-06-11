@@ -28,8 +28,7 @@ class options:
     title = 'ESVN'
     work_id = 'ESVN'
     no_nonadj = False
-
-
+    tag_level = 0
 
 def test_overlapping_1():
     osistext = BeautifulSoup("""
