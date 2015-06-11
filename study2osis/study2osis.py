@@ -100,27 +100,28 @@ class Stydy2Osis(FixOverlappingVersesMixin):
         self._adjust_studynotes(body)
         self._write_studynotes_into_osis(body)
 
-    def process_zip(self, data_in):
-        pass
-
     def process_files(self, input_dir, output_filename=None):
-        files = sorted(
-            [os.path.join(input_dir, HTMLDIRECTORY, f) for f in os.listdir(os.path.join(input_dir, HTMLDIRECTORY)) if
-             f.endswith('studynotes.xhtml')])
+        zip = None
+        if zipfile.is_zipfile(input_dir):
+            zip = zipfile.ZipFile(input_dir)
+            files = [i for i in zip.namelist() if i.endswith('studynotes.xhtml')]
+        else:
+            files = sorted(
+                [os.path.join(input_dir, HTMLDIRECTORY, f) for f in os.listdir(os.path.join(input_dir, HTMLDIRECTORY)) if
+                 f.endswith('studynotes.xhtml')])
 
         if self.options.debug:
-            files = files[:3] #16:18]
+            files = files[:3]
         for fn in files:
             print 'processing', files.index(fn), fn
-            try:
+            if zip:
+                data_in = zip.read(fn)
+            else:
                 data_in = codecs.open(fn, 'r', encoding='utf-8').read()
-            except Exception as e:
-                print 'Error in file %s' % fn
-                raise e
             self.read_file(data_in)
 
         self.fix_overlapping_ranges()
-        output_filename = output_filename or '%s.xml' % input_dir
+        output_filename = output_filename or '%s.xml' % input_dir.rsplit('.')[0] + '.xml'
         self.write_osis(output_filename)
 
     def write_osis(self, output_filename):
