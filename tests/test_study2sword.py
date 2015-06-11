@@ -2,9 +2,10 @@
     Copyright (C) 2015 Tuomas Airaksinen.
     See LICENCE.txt
 """
+from study2osis.overlapping import find_subranges
 
 from study2osis.study2osis import Stydy2Osis, parse_studybible_reference
-from study2osis.bibleref import Ref, expand_ranges, first_reference, last_reference, refrange
+from study2osis.bibleref import Ref, expand_ranges, first_reference, last_reference, xrefrange, refrange
 from bs4 import BeautifulSoup
 
 def com_text(osistext, ref):
@@ -27,6 +28,8 @@ class options:
     title = 'ESVN'
     work_id = 'ESVN'
     no_nonadj = False
+
+
 
 def test_overlapping_1():
     osistext = BeautifulSoup("""
@@ -151,4 +154,21 @@ def test_ref():
     assert Ref('Gen.1.31').next() == Ref('Gen.2.1')
     assert Ref('Gen.50.25').next() == Ref('Gen.50.26')
     assert Ref('Gen.50.26').next() == Ref('Exod.1.1')
-    assert list(refrange(Ref('Gen.1.1'), 'Gen.1.5')) == [Ref("Gen.1.1"), Ref("Gen.1.2"), Ref("Gen.1.3"), Ref("Gen.1.4")]
+    assert list(xrefrange(Ref('Gen.1.1'), 'Gen.1.4')) == [Ref("Gen.1.1"), Ref("Gen.1.2"), Ref("Gen.1.3"), Ref("Gen.1.4")]
+
+def test_find_subranges():
+    orig_range = refrange('Gen.1.1', 'Gen.1.8')
+    act_range = refrange('Gen.1.1', 'Gen.1.3') + refrange('Gen.1.6', 'Gen.1.8')
+    subranges = find_subranges(orig_range, act_range)
+    assert subranges == [refrange('Gen.1.1', 'Gen.1.3'),  refrange('Gen.1.6', 'Gen.1.8')]
+
+    orig_range = refrange('Gen.1.1', 'Gen.1.8')
+    act_range = refrange('Gen.1.1', 'Gen.1.8')
+    subranges = find_subranges(orig_range, act_range)
+    assert subranges == [act_range]
+
+    orig_range = refrange('Gen.1.1', 'Gen.1.8')
+    act_range = refrange('Gen.1.1', 'Gen.1.4') + refrange('Gen.1.6', 'Gen.1.8')
+    subranges = find_subranges(orig_range, act_range)
+    assert subranges == [refrange('Gen.1.1', 'Gen.1.4'),  refrange('Gen.1.6', 'Gen.1.8')]
+

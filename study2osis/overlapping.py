@@ -6,6 +6,20 @@ from copy import copy
 from .bible_data import LAST_CHAPTERS, CHAPTER_LAST_VERSES
 from .bibleref import verses, references_to_string, expand_ranges, Ref
 
+def find_subranges(orig_verses, actual_verses):
+    ranges = []
+    r = []
+    for ov in orig_verses:
+        if ov not in actual_verses:
+            if r:
+                ranges.append(r)
+                r = []
+            continue
+        r.append(ov)
+    if r:
+        ranges.append(r)
+    return ranges
+
 class FixOverlappingVersesMixin(object):
     """
     Provides fix_overlapping_ranges() function and it's helpers to Study2Osis class
@@ -187,26 +201,17 @@ class FixOverlappingVersesMixin(object):
         for comment in all_comments:
             orig_verses = verses(expand_ranges(comment['origRef']))
             actual_verses = verses(comment)
-            new_actual_verses = copy(actual_verses)
-            assert orig_verses[0] == actual_verses[0]
+            new_actual_verses = set(copy(actual_verses))
 
-            for ov in orig_verses:
-                if ov not in actual_verses:
-                    break
+            for rng in find_subranges(orig_verses, actual_verses)[1:]:
+                empty_comment = self._create_empty_comment(rng)
+                for v in rng:
+                    assert self.verse_comment_dict[v] == comment
+                    self.verse_comment_dict[v] = empty_comment
+                new_actual_verses -= set(rng)
+                comment.insert_after(empty_comment)
+            comment['annotateRef'] = references_to_string(new_actual_verses)
 
-            breaking_point = orig_verses.index(ov)
-            if breaking_point == 0:
-                continue
-            remove_verses = orig_verses[breaking_point+1:]
-            for rv in remove_verses:
-                if rv in actual_verses:
-                    new_actual_verses.remove(rv)
-                    assert self.verse_comment_dict[rv] == comment
-                    new_comment = self._create_empty_comment(rv)
-                    self.verse_comment_dict[rv] = new_comment
-                    comment.insert_after(new_comment)
-
-            comment['annotateRef'] = ' '.join(str(i) for i in new_actual_verses)
 
     def _add_reference_links_to_comments(self):
         # Add 'see also' reference links to comments with larger range
@@ -226,7 +231,11 @@ class FixOverlappingVersesMixin(object):
                 ref_links_list.append(i)
 
     def _create_empty_comment(self, verse):
-        comment = self.root_soup.new_tag('div', annotateType='commentary', type='section', annotateRef=str(verse), new_empty='1')
+        if isinstance(verse, (list, set)):
+            verse = references_to_string(verse)
+        verse = str(verse)
+
+        comment = self.root_soup.new_tag('div', annotateType='commentary', type='section', annotateRef=verse, new_empty='1')
         comment.links = []
         comment['origRef'] = comment['annotateRef']
         comment.replaced_by = None

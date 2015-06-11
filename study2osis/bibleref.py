@@ -95,15 +95,19 @@ def verses(a):
         a = a['annotateRef']
     return sorted([Ref(i) for i in a.split(' ')])
 
-def refrange(start, stop):
+def xrefrange(start, stop):
     start = Ref(start)
     stop = Ref(stop)
     if stop < start:
         return
     for i in start.iter():
-        if i >= stop:
+        if i > stop:
             return
         yield i
+
+def refrange(start, stop):
+    return list(xrefrange(start, stop))
+
 
 def references_to_string(vs):
     return ' '.join(str(i) for i in sorted(vs))
