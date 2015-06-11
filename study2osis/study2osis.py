@@ -4,10 +4,13 @@
 """
 import os
 import codecs
+import shutil
+import tempfile
 import zipfile
 
 from bs4 import BeautifulSoup, NavigableString
 import jinja2
+import subprocess
 
 from .overlapping import FixOverlappingVersesMixin
 from .bible_data import BOOKREFS
@@ -18,7 +21,8 @@ TAGS_BOOK = 1
 TAGS_CHAPTES = 2
 TAGS_VERSES = 3
 
-HTMLDIRECTORY = 'OEBPS/Text'
+HTML_DIRECTORY = ['OEBPS', 'Text']
+IMAGE_DIRECTORY = ['OEBPS', 'Images']
 
 def parse_studybible_reference(html_id):
     """
@@ -74,6 +78,7 @@ class Stydy2Osis(FixOverlappingVersesMixin):
         self.options = options
         self.verse_comment_dict = {}
         self.verse_comments_all_dict = {} #list of comments that appear on verses
+        self.images = []
 
         template = jinja2.Template(open('template.xml').read())
         output_xml = BeautifulSoup(template.render(title=options.title, work_id=options.work_id), 'xml')
@@ -107,11 +112,11 @@ class Stydy2Osis(FixOverlappingVersesMixin):
             files = [i for i in zip.namelist() if i.endswith('studynotes.xhtml')]
         else:
             files = sorted(
-                [os.path.join(input_dir, HTMLDIRECTORY, f) for f in os.listdir(os.path.join(input_dir, HTMLDIRECTORY)) if
+                [os.path.join(*([input_dir] + HTML_DIRECTORY + [f])) for f in os.listdir(os.path.join(*([input_dir] + HTML_DIRECTORY))) if
                  f.endswith('studynotes.xhtml')])
 
         if self.options.debug:
-            files = files[:3]
+            files = files[:1]
         for fn in files:
             print 'processing', files.index(fn), fn
             if zip:
@@ -119,18 +124,71 @@ class Stydy2Osis(FixOverlappingVersesMixin):
             else:
                 data_in = codecs.open(fn, 'r', encoding='utf-8').read()
             self.read_file(data_in)
-
         self.fix_overlapping_ranges()
-        output_filename = output_filename or '%s.xml' % input_dir.rsplit('.')[0] + '.xml'
-        self.write_osis(output_filename)
+        if self.options.sword:
+            self.make_sword_module(zip, output_filename, input_dir)
 
-    def write_osis(self, output_filename):
-        print 'Writing OSIS files'
-        out2 = codecs.open('pretty_%s' % output_filename, 'w', encoding='utf-8')
-        out2.write(self.root_soup.prettify())
-        out2.close()
+        else:
+            output_filename = output_filename or '%s.xml' % input_dir.rsplit('.')[0] + '.xml'
+            self.write_osis_file(output_filename)
+        if zip:
+            zip.close()
 
-        if not self.options.debug:
+    def make_sword_module(self, zip, output_filename, input_dir):
+        print 'Making sword module'
+        fd, filename = tempfile.mkstemp()
+        temp = open(filename, 'w')
+        temp.write(unicode(self.root_soup).encode('utf-8'))
+        temp.close()
+        os.close(fd)
+        module_dir = output_filename or '%s_module' % input_dir.rsplit('.')[0]
+        if os.path.exists(module_dir):
+            new_dir = '%s.old'%module_dir
+            while os.path.exists(new_dir):
+                new_dir = '%s.old'%new_dir
+            print 'Moving old directory %s to %s'%(module_dir, new_dir)
+            os.rename(module_dir, new_dir)
+        os.mkdir(module_dir)
+        os.mkdir(os.path.join(module_dir, 'mods.d'))
+        os.mkdir(os.path.join(module_dir, 'modules'))
+        os.mkdir(os.path.join(module_dir, 'modules', 'comments'))
+        os.mkdir(os.path.join(module_dir, 'modules', 'comments', 'zcom'))
+        module_final = os.path.join(module_dir, 'modules', 'comments', 'zcom', self.options.work_id.lower())
+        os.mkdir(module_final)
+        image_path = os.path.join(module_dir, 'modules', 'comments', 'zcom', self.options.work_id.lower(), 'images')
+        os.mkdir(image_path)
+        for i in self.images:
+            if zip:
+                zip.extract('/'.join(IMAGE_DIRECTORY + [i]), image_path)
+            else:
+                shutil.copyfile(os.path.join(*([input_dir]+IMAGE_DIRECTORY+[i])), os.path.join(image_path, i))
+        conf_filename = os.path.join('mods.d', self.options.work_id.lower()+'.conf')
+        if os.path.exists(os.path.join('module_dir', conf_filename)):
+            shutil.copy(os.path.join('module_dir', conf_filename), os.path.join(module_dir, conf_filename))
+        else:
+            f = open(os.path.join(module_dir, conf_filename), 'w')
+            conf_str = jinja2.Template(open('template.conf').read()).render(work_id=self.options.work_id, filename=input_dir)
+            f.write(conf_str)
+            f.close()
+
+        process = subprocess.Popen(['osis2mod', module_final, filename, '-v', 'NRSV', '-z', '-b', '3'], stdout=subprocess.PIPE)
+        process.communicate()
+        process.wait()
+        os.unlink(filename)
+        of = zipfile.ZipFile(module_dir+'.zip', 'w')
+        for root, dirs, files in os.walk(module_dir):
+            for file in files:
+                of.write(os.path.join(root, file))
+        of.close()
+
+    def write_osis_file(self, output_filename):
+        print 'Writing OSIS file %s'%output_filename
+
+        if self.options.debug:
+            out2 = codecs.open('pretty_%s' % output_filename, 'w', encoding='utf-8')
+            out2.write(self.root_soup.prettify())
+            out2.close()
+        else:
             out = codecs.open(output_filename, 'w', encoding='utf-8')
             out.write(unicode(self.root_soup))
             out.close()
@@ -263,6 +321,7 @@ class Stydy2Osis(FixOverlappingVersesMixin):
         for img in img_div.find_all('img'):
             img.name = 'figure'
             img['src'] = img['src'].replace('../Images/', 'images/')
+            self.images.append(img['src'].split('/')[-1])
 
     def fix_fact(self, fact_div):
         for n in fact_div.find_all('h2'):

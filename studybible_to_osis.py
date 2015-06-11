@@ -14,6 +14,8 @@ if __name__ == '__main__':
     parser = optparse.OptionParser(usage='Usage. %prog [options] input_dir')
     parser.add_option('--debug', action='store_true', dest='debug', default=False,
                       help='Debug mode')
+    parser.add_option('--sword', action='store_true', dest='sword', default=False,
+                      help='Generate sword module (zip file). osis2mod is needed')
     parser.add_option('--no_nonadj', action='store_true', dest='no_nonadj', default=False,
                       help='Do not create empty comments (with only links) for non-adjacent verse ranges')
     parser.add_option('--tag_level', dest='tag_level', default=0, type=int,
