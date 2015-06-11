@@ -4,6 +4,7 @@
 """
 import os
 import codecs
+import zipfile
 
 from bs4 import BeautifulSoup, NavigableString
 import jinja2
@@ -69,9 +70,8 @@ def parse_studybible_reference(html_id):
     return ' '.join(result)
 
 class Stydy2Osis(FixOverlappingVersesMixin):
-    def __init__(self, options=None, input_dir=None):
+    def __init__(self, options=None):
         self.options = options
-        self.input_dir = input_dir
         self.verse_comment_dict = {}
         self.verse_comments_all_dict = {} #list of comments that appear on verses
 
@@ -79,19 +79,8 @@ class Stydy2Osis(FixOverlappingVersesMixin):
         output_xml = BeautifulSoup(template.render(title=options.title, work_id=options.work_id), 'xml')
         self.root_soup = output_xml
 
-    def process_files(self):
-        tag_level = self.options.tag_level
-        debug = self.options.debug
-        input_dir = self.input_dir
-
-        print "TAG_LEVEL: %s, DEBUG: %s INPUT DIR %s" % (tag_level, debug, input_dir)
-        files = sorted(
-            [os.path.join(input_dir, HTMLDIRECTORY, f) for f in os.listdir(os.path.join(input_dir, HTMLDIRECTORY)) if
-             f.endswith('studynotes.xhtml')])
-        output_xml = self.root_soup
-
         self.osistext = osistext = output_xml.find('osisText')
-        if tag_level >= TAGS_BOOK:
+        if self.options.tag_level >= TAGS_BOOK:
             ot = output_xml.new_tag('div', type='x-testament')
             matt_ref = BOOKREFS.index('Matt')
             for i in BOOKREFS[:matt_ref]:
@@ -104,7 +93,22 @@ class Stydy2Osis(FixOverlappingVersesMixin):
             osistext.append(ot)
             osistext.append(nt)
 
-        if debug:
+    def read_file(self, data_in):
+        input_html = BeautifulSoup(data_in, 'xml')
+
+        body = input_html.find('body')
+        self._adjust_studynotes(body)
+        self._write_studynotes_into_osis(body)
+
+    def process_zip(self, data_in):
+        pass
+
+    def process_files(self, input_dir, output_filename=None):
+        files = sorted(
+            [os.path.join(input_dir, HTMLDIRECTORY, f) for f in os.listdir(os.path.join(input_dir, HTMLDIRECTORY)) if
+             f.endswith('studynotes.xhtml')])
+
+        if self.options.debug:
             files = files[:3] #16:18]
         for fn in files:
             print 'processing', files.index(fn), fn
@@ -113,25 +117,21 @@ class Stydy2Osis(FixOverlappingVersesMixin):
             except Exception as e:
                 print 'Error in file %s' % fn
                 raise e
+            self.read_file(data_in)
 
-            input_html = BeautifulSoup(data_in, 'xml')
-
-            body = input_html.find('body')
-            self._adjust_studynotes(body)
-            self._write_studynotes_into_osis(body, tag_level)
-
-        print 'Fixing overlapping ranges'
         self.fix_overlapping_ranges()
+        output_filename = output_filename or '%s.xml' % input_dir
+        self.write_osis(output_filename)
 
+    def write_osis(self, output_filename):
         print 'Writing OSIS files'
-
-        out2 = codecs.open('%s_pretty.xml' % input_dir, 'w', encoding='utf-8')
-        out2.write(output_xml.prettify())
+        out2 = codecs.open('pretty_%s' % output_filename, 'w', encoding='utf-8')
+        out2.write(self.root_soup.prettify())
         out2.close()
 
-        if not debug:
-            out = codecs.open('%s.xml' % input_dir, 'w', encoding='utf-8')
-            out.write(unicode(output_xml))
+        if not self.options.debug:
+            out = codecs.open(output_filename, 'w', encoding='utf-8')
+            out.write(unicode(self.root_soup))
             out.close()
 
     def _fix_bibleref_links(self, input_soup):
@@ -326,7 +326,8 @@ class Stydy2Osis(FixOverlappingVersesMixin):
                 rootlevel_tag.extract()
                 previous.append(rootlevel_tag)
 
-    def _write_studynotes_into_osis(self, input_html, tag_level):
+    def _write_studynotes_into_osis(self, input_html):
+        tag_level = self.options.tag_level
         osistext = self.osistext
         bookdivs = {}
         chapdivs = {}

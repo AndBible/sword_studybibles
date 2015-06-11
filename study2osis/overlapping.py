@@ -34,6 +34,7 @@ class FixOverlappingVersesMixin(object):
                 - add manual link from those removed verses to those range comments
 
         """
+        print 'Fixing overlapping ranges'
         print '... expand all ranges'
         self._expand_all_ranges()
         print '... process overlapping verses'

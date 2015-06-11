@@ -28,7 +28,7 @@ if __name__ == '__main__':
     options, args = parser.parse_args()
     if len(args) == 1:
         input_dir = args[0]
-        o = Stydy2Osis(options, input_dir)
-        o.process_files()
+        o = Stydy2Osis(options)
+        o.process_files(input_dir)
     else:
         parser.print_help()
