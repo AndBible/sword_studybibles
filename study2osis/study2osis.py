@@ -2,9 +2,12 @@
     Copyright (C) 2014 Tuomas Airaksinen.
     See LICENCE.txt
 """
+import os
 
 from bs4 import BeautifulSoup, NavigableString
 import jinja2
+import logging
+logger = logging.getLogger('study2osis')
 
 from .overlapping import FixOverlappingVersesMixin
 from .bible_data import BOOKREFS
@@ -16,6 +19,7 @@ TAGS_BOOK = 1
 TAGS_CHAPTES = 2
 TAGS_VERSES = 3
 
+TEMPLATE_XML = os.path.join(__file__.rsplit(os.path.sep,1)[0], 'template.xml')
 
 def parse_studybible_reference(html_id):
     """
@@ -68,8 +72,24 @@ def parse_studybible_reference(html_id):
 
 def dict_to_options(opts):
     class Options:
-        pass
+        @classmethod
+        def setdefault(self, k, v):
+            self.__dict__.setdefault(k, v)
+
+    default_options = dict(
+        debug=False,
+        sword=True,
+        tag_level=0,
+        title='',
+        work_id='',
+        bible_work_id='ESVS',
+        no_nonadj=False,
+    )
+    for key, value in default_options.iteritems():
+        opts.setdefault(key, value)
+
     Options.__dict__ = opts
+
     return Options
 
 class Study2Osis(FixOverlappingVersesMixin, IOMixin):
@@ -77,11 +97,12 @@ class Study2Osis(FixOverlappingVersesMixin, IOMixin):
         if isinstance(options, dict):
             options = dict_to_options(options)
         self.options = options
+
         self.verse_comment_dict = {}
         self.verse_comments_all_dict = {} #list of comments that appear on verses
         self.images = []
 
-        template = jinja2.Template(open('template.xml').read())
+        template = jinja2.Template(open(TEMPLATE_XML).read())
         output_xml = BeautifulSoup(template.render(title=options.title, work_id=options.work_id), 'xml')
         self.root_soup = output_xml
 
@@ -122,7 +143,7 @@ class Study2Osis(FixOverlappingVersesMixin, IOMixin):
                 # link may be removed
                 a.replace_with('[%s]' % a.text)
             else:
-                raise Exception('Link not handled %s' % file)
+                logger.error('Link not handled %s', file)
 
             if ref:
                 a['osisRef'] = ref
@@ -143,7 +164,7 @@ class Study2Osis(FixOverlappingVersesMixin, IOMixin):
             elif s.text in ['A.D.', 'B.C.', 'A.M.', 'P.M.']:
                 s.replace_with(s.text)
             else:
-                raise Exception('still some unhandled small %s', s)
+                logger.error('still some unhandled small %s', s)
 
         self._fix_bibleref_links(input_soup)
 
@@ -202,7 +223,8 @@ class Study2Osis(FixOverlappingVersesMixin, IOMixin):
             elif cls in ['good-king', 'mixture-king', 'bad-king', 'normal', None]:
                 s.unwrap()
             else:
-                raise Exception('span class not known %s', cls)
+                s.unwrap()
+                logger.error('span class not known %s', cls)
 
         for s in input_soup.find_all('hi'):
             if len(s) == 0:
@@ -255,10 +277,10 @@ class Study2Osis(FixOverlappingVersesMixin, IOMixin):
                 elif cls == 'object info':
                     self._fix_table(rootlevel_tag)
                 else:
-                    raise Exception('Unknown class %s' % cls)
+                    logger.error('Unknown div class %s', cls)
             elif rootlevel_tag.name == 'p':
                 if rootlevel_tag['class'] not in ['outline-1', 'outline-3', 'outline-4', 'study-note-continue', 'study-note']:
-                    raise Exception('not handled %s' % rootlevel_tag['class'])
+                    logger.error('not handled %s', rootlevel_tag['class'])
             elif isinstance(rootlevel_tag, NavigableString):
                 continue
             elif rootlevel_tag.name == 'table':
@@ -267,7 +289,7 @@ class Study2Osis(FixOverlappingVersesMixin, IOMixin):
             elif rootlevel_tag.name == 'ol':
                 rootlevel_tag = rootlevel_tag.wrap(self.root_soup.new_tag('div', type='paragraph'))
             else:
-                raise Exception('not handled %s' % rootlevel_tag)
+                logger.error('Not handled %s', rootlevel_tag)
 
             self._fix_studynote_text_tags(rootlevel_tag)
             rootlevel_tag.name = 'div'
@@ -277,7 +299,7 @@ class Study2Osis(FixOverlappingVersesMixin, IOMixin):
                 try:
                     ref = parse_studybible_reference(rootlevel_tag['id'])
                 except IllegalReference:
-                    print 'not writing', rootlevel_tag
+                    logger.error('NOT writing %s', rootlevel_tag)
                     continue
 
                 del rootlevel_tag['id']

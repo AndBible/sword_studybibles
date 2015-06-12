@@ -19,7 +19,7 @@ def cached_refs(cls):
             ref_string = '%s.%s.%s' % tuple(ref_string)
         if isinstance(ref_string, Ref.orig_cls):
             return ref_string
-        assert isinstance(ref_string, str)
+        assert isinstance(ref_string, (str, unicode))
         if ref_string not in instances:
             instances[ref_string] = cls(ref_string)
         return instances[ref_string]

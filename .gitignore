@@ -11,3 +11,7 @@
 /dist/
 /study2sword.egg-info/
 /module_out/
+/study2osis.egg-info/
+*.zip
+*.epub
+*.osis

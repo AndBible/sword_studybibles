@@ -3,6 +3,10 @@
     See LICENCE.txt
 """
 from copy import copy
+import logging
+
+logger = logging.getLogger('study2osis')
+
 from .bible_data import LAST_CHAPTERS, CHAPTER_LAST_VERSES
 from .bibleref import verses, references_to_string, expand_ranges, Ref
 
@@ -34,17 +38,17 @@ class FixOverlappingVersesMixin(object):
                 - add manual link from those removed verses to those range comments
 
         """
-        print 'Fixing overlapping ranges'
-        print '... expand all ranges'
+        logger.info('Fixing overlapping ranges')
+        logger.info('... expand all ranges')
         self._expand_all_ranges()
-        print '... process overlapping verses'
+        logger.info('... process overlapping verses')
         self._process_overlapping_verses()
         if not self.options.no_nonadj:
-            print '... create empty comments for nonadjacent ranges (optional step)'
+            logger.info('... create empty comments for nonadjacent ranges (optional step)')
             self._create_empty_comments_for_nonadjancent_ranges()
-        print '... add reference links to strings'
+        logger.info('... add reference links to strings')
         self._add_reference_links_to_comments()
-        print '... sort links'
+        logger.info('... sort links')
         self._sort_links()
 
     def _add_reference_link(self, comment, link_target_comment):

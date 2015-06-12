@@ -3,12 +3,16 @@
     See LICENCE.txt
 """
 
+import logging
+
+logger = logging.getLogger('study2osis')
 import os, zipfile, tempfile, codecs, subprocess, shutil
 import jinja2
 from bs4 import BeautifulSoup
 
 HTML_DIRECTORY = ['OEBPS', 'Text']
 IMAGE_DIRECTORY = ['OEBPS', 'Images']
+TEMPLATE_CONF = os.path.join(__file__.rsplit(os.path.sep,1)[0], 'template.conf')
 
 class IOMixin(object):
     """
@@ -32,9 +36,9 @@ class IOMixin(object):
                  f.endswith('studynotes.xhtml')])
 
         if self.options.debug:
-            files = files[:1]
+            files = files[:6]
         for fn in files:
-            print 'processing', files.index(fn), fn
+            logger.info('processing %s %s', files.index(fn), fn)
             if epub_zip:
                 data_in = epub_zip.read(fn)
             else:
@@ -51,20 +55,13 @@ class IOMixin(object):
             epub_zip.close()
 
     def make_sword_module(self, epub_zip, output_filename, input_dir):
-        print 'Making sword module'
+        logger.info('Making sword module')
         fd, filename = tempfile.mkstemp()
         temp = open(filename, 'w')
         temp.write(unicode(self.root_soup).encode('utf-8'))
         temp.close()
         os.close(fd)
         module_dir = tempfile.mkdtemp()
-        #if os.path.exists(module_dir):
-        #    new_dir = '%s.old'%module_dir
-        #    while os.path.exists(new_dir):
-        #        new_dir = '%s.old'%new_dir
-        #    print 'Moving old directory %s to %s'%(module_dir, new_dir)
-        #    os.rename(module_dir, new_dir)
-        #os.mkdir(module_dir)
         os.mkdir(os.path.join(module_dir, 'mods.d'))
         os.mkdir(os.path.join(module_dir, 'modules'))
         os.mkdir(os.path.join(module_dir, 'modules', 'comments'))
@@ -86,7 +83,7 @@ class IOMixin(object):
             shutil.copy(os.path.join('module_dir', conf_filename), os.path.join(module_dir, conf_filename))
         else:
             f = open(os.path.join(module_dir, conf_filename), 'w')
-            conf_str = jinja2.Template(open('template.conf').read()).render(work_id=self.options.work_id, filename=input_dir)
+            conf_str = jinja2.Template(open(TEMPLATE_CONF).read()).render(work_id=self.options.work_id, filename=input_dir)
             f.write(conf_str)
             f.close()
 
@@ -102,10 +99,10 @@ class IOMixin(object):
                 sword_zip.write(os.path.join(root, file), os.path.join(root_in_zip, file))
         sword_zip.close()
         shutil.rmtree(module_dir)
-        print 'Sword module written in', zip_filename
+        logger.info('Sword module written in %s', zip_filename)
 
     def write_osis_file(self, output_filename):
-        print 'Writing OSIS file %s'%output_filename
+        logger.info('Writing OSIS file %s', output_filename)
 
         if self.options.debug:
             out2 = codecs.open('pretty_%s' % output_filename, 'w', encoding='utf-8')
