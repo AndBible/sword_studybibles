@@ -25,12 +25,16 @@ class IOMixin(object):
         self._adjust_studynotes(body)
         self._write_studynotes_into_osis(body)
 
-    def process_files(self, input_dir, output_filename=None):
+    def process_files(self, input_dir, output_filename=None, assume_zip=False):
         epub_zip = None
         if zipfile.is_zipfile(input_dir):
             epub_zip = zipfile.ZipFile(input_dir)
             files = [i for i in epub_zip.namelist() if i.endswith('studynotes.xhtml')]
+            if not files:
+                raise Exception('No studynotes in zip file')
         else:
+            if assume_zip:
+                raise Exception('Zip file assumed!')
             files = sorted(
                 [os.path.join(*([input_dir] + HTML_DIRECTORY + [f])) for f in os.listdir(os.path.join(*([input_dir] + HTML_DIRECTORY))) if
                  f.endswith('studynotes.xhtml')])
