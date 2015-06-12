@@ -2,7 +2,7 @@
 /global/
 /esv/
 *.swp
-*.xml
+/*.xml
 /.idea/
 /global_mod/
 *.pyc
