@@ -86,7 +86,7 @@ class IOMixin(object):
         if os.path.exists(os.path.join('module_dir', conf_filename)):
             shutil.copy(os.path.join('module_dir', conf_filename), os.path.join(module_dir, conf_filename))
         else:
-            f = open(os.path.join(module_dir, conf_filename), 'w')
+            f = codecs.open(os.path.join(module_dir, conf_filename), 'w', 'utf-8')
             conf_str = jinja2.Template(open(TEMPLATE_CONF).read()).render(work_id=self.options.work_id, filename=input_dir)
             f.write(conf_str)
             f.close()
