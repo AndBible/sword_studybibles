@@ -61,8 +61,8 @@ class IOMixin(object):
     def make_sword_module(self, epub_zip, output_filename, input_dir):
         logger.info('Making sword module')
         fd, filename = tempfile.mkstemp()
-        temp = open(filename, 'w')
-        temp.write(unicode(self.root_soup).encode('utf-8'))
+        temp = codecs.open(filename, 'w', 'utf-8')
+        temp.write(unicode(self.root_soup))
         temp.close()
         os.close(fd)
         module_dir = tempfile.mkdtemp()
