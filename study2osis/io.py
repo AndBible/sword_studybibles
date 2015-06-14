@@ -1,5 +1,5 @@
 """
-    Copyright (C) 2014 Tuomas Airaksinen.
+    Copyright (C) 2015 Tuomas Airaksinen.
     See LICENCE.txt
 """
 
@@ -40,7 +40,7 @@ class IOMixin(object):
                  f.endswith('studynotes.xhtml')])
 
         if self.options.debug:
-            files = files[:6]
+            files = files[:1]
         for fn in files:
             logger.info('processing %s %s', files.index(fn), fn)
             if epub_zip:
@@ -87,7 +87,10 @@ class IOMixin(object):
             shutil.copy(os.path.join('module_dir', conf_filename), os.path.join(module_dir, conf_filename))
         else:
             f = codecs.open(os.path.join(module_dir, conf_filename), 'w', 'utf-8')
-            conf_str = jinja2.Template(codecs.open(TEMPLATE_CONF, 'r', 'utf-8').read()).render(work_id=self.options.work_id, filename=input_dir)
+            conf_str = jinja2.Template(codecs.open(TEMPLATE_CONF, 'r', 'utf-8').read()).render(
+                                                                    work_id=self.options.work_id,
+                                                                    filename=input_dir,
+                                                                    title=self.options.title)
             f.write(conf_str)
             f.close()
 
