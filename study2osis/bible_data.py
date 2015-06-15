@@ -22,6 +22,11 @@ def get_verse_ranges():
     return chap_nums, verse_nums
 
 
+TAGS_NONE = 0
+TAGS_BOOK = 1
+TAGS_CHAPTES = 2
+TAGS_VERSES = 3
+
 BOOKREFS = ['Gen', 'Exod', 'Lev', 'Num', 'Deut', 'Josh', 'Judg', 'Ruth', '1Sam', '2Sam', '1Kgs', '2Kgs', '1Chr',
             '2Chr', 'Ezra', 'Neh', 'Esth', 'Job', 'Ps', 'Prov', 'Eccl', 'Song', 'Isa', 'Jer', 'Lam', 'Ezek', 'Dan',
             'Hos', 'Joel', 'Amos', 'Obad', 'Jonah', 'Mic', 'Nah', 'Hab', 'Zeph', 'Hag', 'Zech', 'Mal', 'Matt', 'Mark',

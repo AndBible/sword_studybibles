@@ -2,9 +2,10 @@
     Copyright (C) 2015 Tuomas Airaksinen.
     See LICENCE.txt
 """
+from study2osis.html2osis import parse_studybible_reference
 from study2osis.overlapping import find_subranges
 
-from study2osis.study2osis import Study2Osis, parse_studybible_reference
+from study2osis.study2osis import Study2Osis
 from study2osis.bibleref import Ref, expand_ranges, first_reference, last_reference, xrefrange, refrange
 from bs4 import BeautifulSoup
 

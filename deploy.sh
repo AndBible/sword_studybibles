@@ -12,17 +12,18 @@ unzip -o global_module.zip -d ~/.sword/
 python studybible_to_osis.py --title "The McArthur Study Bible notes" --work_id "MCAN" mcarthur.epub --tag_level 0 --sword
 unzip -o mcarthur_module.zip -d ~/.sword/
 
+#exit 0
+
 rm -r module_out
 mkdir module_out
 unzip esv_module.zip -d module_out
 unzip global_module.zip -d module_out
 unzip mcarthur_module.zip -d module_out
-
 ssh taandroid mkdir /sdcard/jsword/$ESVDIR
 ssh taandroid mkdir /sdcard/jsword/$MCADIR
 ssh taandroid mkdir /sdcard/jsword/$GBLDIR
 
-opts="-t -v -r --progress --delete"
+opts="-v -r --progress --delete"
 
 rsync $opts module_out/$ESVDIR/ taandroid:/sdcard/jsword/$ESVDIR/
 rsync $opts module_out/$GBLDIR/ taandroid:/sdcard/jsword/$GBLDIR/
