@@ -71,37 +71,29 @@ class FixOverlappingVersesMixin(object):
 
             link_item = self.root_soup.new_tag('item')
             links.append(link_item)
-
-            bold_tag = None
-            for i in xrange(4):
-                if bold_tag:
-                    break
-                bold_tag = link_target_comment.find('hi', class_='outline-%s'%i, type='bold')
-            if not bold_tag:
-                bold_tag = link_target_comment.find('title')
-
-            title_text = ''
-            if bold_tag:
-                title_text = bold_tag.text.strip('., ')
-
-
-            ref_text = link_target_comment.find('reference').text.strip('., ')
-            title_text.replace(ref_text, '')
-            if len(title_text) > 35:
-                title_text = title_text[:35].rsplit(' ', 1)[0]+'...'
+            is_fig = False
+            is_tab = False
+            length = 34 # trying to keep lenght pretty short so that mobile phones would show only one line/link
             if link_target_comment.find('figure'):
-                title_text += ', FIGURE'
+                length -= 3
+                is_fig = True
 
             if link_target_comment.find('table'):
-                title_text += ', TABLE'
+                length -= 3
+                is_tab = True
+
+            title_text = link_target_comment.text[:length].rsplit(' ', 1)[0] + '...'
+
+            if is_fig:
+                title_text += ' [F]'
+
+            if is_tab:
+                title_text += ' [T]'
 
             link_tag = self.root_soup.new_tag('reference', osisRef=self.options.work_id + ':' +
                                               str(verses(link_target_comment)[0]), cls='reference_links')
-            note_title = 'Cf. %s'%ref_text.strip()
-            if title_text:
-                note_title += ' (%s)'%title_text.strip()
 
-            link_tag.append(self.root_soup.new_string(note_title))
+            link_tag.append(self.root_soup.new_string(title_text))
             link_item.append(link_tag)
 
     def _merge_into_previous_comment(self, comment, prev_comment):
