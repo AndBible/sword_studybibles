@@ -15,36 +15,29 @@ I'm proceeding to get free Global Study Bible module distributed via crosswire e
 modules via Crossway's e-library. At the moment I do not have rights to distribute any of them, but you
 may use this tool to get your module.
 
+Online version
+----------------
+
+If playing around with python scripts is not your thing, you may use my easy
+online version here:
+
+*coming soon*
+
+
 Installing and converting to SWORD module
 -----------------------------------------
 
-Install python packages beautifulsoup4 and jinja2:
+Install some python packages:
 
     pip install beautifulsoup4
     pip install jinja2
     pip install lxml
 
-Unzip your epub file:
+Install osis2mod tool that can be obtained from http://www.crosswire.org/wiki/DevTools:Modules
 
-    mkdir modulename
-    cd modulename
-    unzip PATH_TO_MY.epub
+To convert ePub to SWORD module (compressed in a zip file), run command
 
-Run command
-
-    python studybible_to_osis.py modulename
-
-This will create OSIS XML file modulename.xml.
-
-This can be converted to sword module by osis2mod tool, that can be obtained from
-http://www.crosswire.org/wiki/DevTools:Modules
-
-    osis2mod module_dir/modules/comments/zcom/glbn/ global.xml -v NRSV -z -b 4
-
-Your sword module is now built under module_dir. Sample configurations are found in
-module_dir/mods.d/.
-
-Then copy figures from module_name/OEBPS/Images to module_dir/modules_comments/zcom/glbn/images/.
+    python studybible_to_osis.py your_book.epub your_module.zip --sword
 
 Quality considerations
 ----------------------
@@ -56,8 +49,9 @@ Known issues
 ------------
  - By default verse linking is hard-wired to ESVS module. This is to workaround with Andbible
    <reference> rendering bug (or feature - this is still to be disputed).
+   You may use --bible_work_id None if you wish not to use ESVS as your bible.
 
 TODO
 ----
-  - Add bible book intros into beginning of each book in commentary module
+  - Add bible book intros into beginning of each book in commentary module (+ backreferences)
   - Make sword book module out of other articles
