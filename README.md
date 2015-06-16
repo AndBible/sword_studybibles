@@ -1,28 +1,26 @@
 Study bibles into OSIS / sword modules BETA
 ===========================================
 
-This script (study2sword.py) converts ePub-type files into OSIS xml files, that can be further converted into
-sword module.
+This conversion utility is able to convert various bible commentary (study bible) ePub files
+into SWORD modules. You must obtain ePub file (i.e. if e-book is being sold, you must buy it first).
+ When you have the ePub file, you can use this utility to convert that file into a SWORD commentary module.
 
-ePub file for Global Study Bible (abreviated ESV study bible) can be downloaded for free from http://www.esv.org/e-books/.
+SWORD modules can be used with various Bible study software, including Xiphos on Linux/Windows desktop,
+Eloquent for Apple OS X, AndBible on Android and Pocketsword on iPhone.
 
-ePub-files for ESV Study Bible and McArthur Study Bible (and some other study bibles too)
-can be downloaded from Crossway (https://www.crossway.org/customer/library/#product_type=Ebook) if you have purchased them either
-as a physical book or only digitally. It is likely that other ePub bible commentaries can be handled by
-this tool (if not directly, with smallish modifications to the code).
+The following modules are tested to work:
 
-I'm proceeding to get free Global Study Bible module distributed via crosswire etc. and proprietary
-modules via Crossway's e-library. At the moment I do not have rights to distribute any of them, but you
-may use this tool to get your module.
+    * The ESV Global Study Bible (download for free from ESV.org e-books).
+    * The ESV Study Bible (buy from ESV.org e-books).
+    * McArthur Study Bible (buy from ESV.org e-books).
+
+Others ePub commentaries may work or not, but feel free to try out. Support for other ePub commentary books can be
+suggested via Github issue or by email. This software is at beta stage.
 
 Online version
 ----------------
 
-If playing around with python scripts is not your thing, you may use my easy
-online version here:
-
-*coming soon*
-
+Try ONLINE version at http://tuomasairaksinen.fi/studybibles/
 
 Installing and converting to SWORD module
 -----------------------------------------
