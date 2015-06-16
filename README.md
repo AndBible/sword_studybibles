@@ -10,9 +10,9 @@ Eloquent for Apple OS X, AndBible on Android and Pocketsword on iPhone.
 
 The following modules are tested to work:
 
-    * The ESV Global Study Bible (download for free from ESV.org e-books).
-    * The ESV Study Bible (buy from ESV.org e-books).
-    * McArthur Study Bible (buy from ESV.org e-books).
+ * The ESV Global Study Bible (download for free from ESV.org e-books).
+ * The ESV Study Bible (buy from ESV.org e-books).
+ * McArthur Study Bible (buy from ESV.org e-books).
 
 Others ePub commentaries may work or not, but feel free to try out. Support for other ePub commentary books can be
 suggested via Github issue or by email. This software is at beta stage.
