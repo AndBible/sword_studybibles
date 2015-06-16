@@ -7,7 +7,7 @@
 """
 
 import optparse
-from study2osis.study2osis import Study2Osis
+from study2osis import Study2Osis
 from ipdb import launch_ipdb_on_exception
 import logging
 logging.basicConfig(level=logging.INFO)

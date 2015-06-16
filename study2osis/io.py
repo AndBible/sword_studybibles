@@ -59,6 +59,7 @@ class IOMixin(object):
             epub_zip.close()
 
     def make_sword_module(self, epub_zip, output_filename, input_dir):
+        from study2osis import __version__
         logger.info('Making sword module')
         fd, filename = tempfile.mkstemp()
         temp = codecs.open(filename, 'w', 'utf-8')
@@ -90,7 +91,9 @@ class IOMixin(object):
             conf_str = jinja2.Template(codecs.open(TEMPLATE_CONF, 'r', 'utf-8').read()).render(
                                                                     work_id=self.options.work_id,
                                                                     filename=input_dir,
-                                                                    title=self.options.title)
+                                                                    title=self.options.title,
+                                                                    revision=__version__,
+                                                                    )
             f.write(conf_str)
             f.close()
 
