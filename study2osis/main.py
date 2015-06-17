@@ -94,6 +94,7 @@ class Study2Osis(FixOverlappingVersesMixin, HTML2OsisMixin):
         if self.options.debug:
             studynote_files = studynote_files[:1]
 
+        logger.info('Reading studynotes')
         for fn in studynote_files:
             logger.debug('Reading studynotes %s %s', studynote_files.index(fn), fn)
             data_in = epub_zip.read(fn)
@@ -292,11 +293,14 @@ class Articles2Osis(HTML2OsisMixin):
 
     def read_intros_and_articles(self, epub_zip):
         self.zip = epub_zip
+
+        logger.info('Reading articles')
         soup = self._give_soup(os.path.join(self.path, 'toc.xhtml'))
         self._process_toc(soup)
 
         bookintro_files = [i for i in epub_zip.namelist() if i.endswith('intros.xhtml')]
 
+        logger.info('Reading intros')
         for f in bookintro_files:
             logger.debug('Reading intros %s', f)
             bs = self._give_soup(f).find('body')
@@ -323,7 +327,7 @@ class Articles2Osis(HTML2OsisMixin):
                     pt.unwrap()
 
         for pt in self.root_soup.find_all('div', type='section'):
-            pt['osisID'] = pt.title.text
+            pt['osisID'] = '- ' + pt.title.text
 
         for pt in self.root_soup.find_all('div'):
             if 'type' not in pt.attrs:
