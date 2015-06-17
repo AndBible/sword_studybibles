@@ -5,7 +5,7 @@
 from study2osis.html2osis import parse_studybible_reference
 from study2osis.overlapping import find_subranges
 
-from study2osis import Study2Osis
+from study2osis.main import Study2Osis, Articles2Osis
 from study2osis.bibleref import Ref, expand_ranges, first_reference, last_reference, xrefrange, refrange
 from bs4 import BeautifulSoup
 
@@ -113,7 +113,86 @@ def test_adjacent_verses():
     #assert link_refs(osistext, 'Gen.1.5') == set()
     #assert link_refs(osistext, 'Gen.1.6') == set()
 
-    #print result
+
+def test_genbook():
+    osistext = BeautifulSoup("""
+        <body>
+        <h1>h1 title</h1>
+        <h2>h2 section</h2>
+        <h3>h3 subsection</h3>
+        <p>paragraph</p>
+
+        </body>
+    """, 'xml')
+
+    s = Articles2Osis(options)
+    #s.root_soup = s.osistext = osistext
+    s._process_html_body(osistext.find('body'), 'fname')
+    result = unicode(s.root_soup) #.prettify()
+
+    result_txt = u'''<?xml version="1.0" encoding="utf-8"?>
+<osis xmlns="http://www.bibletechnologies.net/2003/OSIS/namespace" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.bibletechnologies.net/2003/OSIS/namespace http://www.bibletechnologies.net/osisCore.2.1.1.xsd">
+<osisText osisIDWork="ESVN" osisRefWork="book" xml:lang="en">
+<header>
+<work osisWork="ESVN">
+<title>ESVN</title>
+<creator role="aut">-</creator>
+<identifier type="OSIS">ESVN</identifier>
+<refSystem>Bible.NRSV</refSystem>
+<language>en</language>
+</work>
+</header>
+<div osisID="EsvArticles" type="book"><div origfile="fname" osisID="h1 title" type="majorSection">
+<title>h1 title</title>
+<div type="section"><title>h2 section</title>
+<div type="subsection"><title>h3 subsection</title>
+<div type="paragraph">paragraph</div>
+</div></div></div></div></osisText>
+</osis>'''
+    assert result == result_txt
+
+def test_genbook2():
+    osistext = BeautifulSoup("""
+        <body>
+        <h1>h1 title</h1>
+            <h2>h2 section</h2>
+                <h3>h3 subsection</h3>
+                    <p>paragraph</p>
+                <h3>h3 another</h3>
+                    <p>another para</p>
+            <h2>h2 another</h2>
+                <p>under h2 another</p>
+        </body>
+    """, 'xml')
+
+    s = Articles2Osis(options)
+    #s.root_soup = s.osistext = osistext
+    s._process_html_body(osistext.find('body'), 'fname')
+    result = unicode(s.root_soup) #.prettify()
+    assert result == """<?xml version="1.0" encoding="utf-8"?>
+<osis xmlns="http://www.bibletechnologies.net/2003/OSIS/namespace" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.bibletechnologies.net/2003/OSIS/namespace http://www.bibletechnologies.net/osisCore.2.1.1.xsd">
+<osisText osisIDWork="ESVN" osisRefWork="book" xml:lang="en">
+<header>
+<work osisWork="ESVN">
+<title>ESVN</title>
+<creator role="aut">-</creator>
+<identifier type="OSIS">ESVN</identifier>
+<refSystem>Bible.NRSV</refSystem>
+<language>en</language>
+</work>
+</header>
+<div osisID="EsvArticles" type="book"><div origfile="fname" osisID="h1 title" type="majorSection">
+<title>h1 title</title>
+<div type="section"><title>h2 section</title>
+<div type="subsection"><title>h3 subsection</title>
+<div type="paragraph">paragraph</div>
+</div><div type="subsection"><title>h3 another</title>
+<div type="paragraph">another para</div>
+</div></div><div type="section"><title>h2 another</title>
+<div type="paragraph">under h2 another</div>
+</div></div></div></osisText>
+</osis>"""
+
 def test_expand_ranges():
     assert expand_ranges("Gen.2.4-Gen.2.6") == "Gen.2.4 Gen.2.5 Gen.2.6"
     assert expand_ranges("Gen.1.30-Gen.2.1") == "Gen.1.30 Gen.1.31 Gen.2.1"

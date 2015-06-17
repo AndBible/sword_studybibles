@@ -48,8 +48,16 @@ Known issues
  - By default verse linking is hard-wired to ESVS module. This is to workaround with Andbible
    <reference> rendering bug (or feature - this is still to be disputed).
    You may use --bible_work_id None if you wish not to use ESVS as your bible.
+ - And bible does not resize images
+ - And bible shows General book contents as a one big list instead of a tree
 
 TODO
 ----
-  - Add bible book intros into beginning of each book in commentary module (+ backreferences)
-  - Make sword book module out of other articles
+  - Cross-linking to intros/articles does is not implemented yet
+  - Backreferences from comments to articles
+  - Write manually some TOCs in genbook
+
+CHANGES
+-------
+ - revision 5: articles + book introductions as genbook
+

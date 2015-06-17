@@ -71,23 +71,27 @@ class HTML2OsisMixin(object):
                 continue
             a.name = 'reference'
             url = a['href']
-            file, verserange = url.split('#')
+            if '#' in url:
+                filename, verserange = url.split('#')
+            else:
+                filename = url
+                verserange = ''
             ref = None
-            if file.endswith('text.xhtml'):
+            if filename.endswith('text.xhtml'):
                 ref = parse_studybible_reference(verserange)
                 if self.options.bible_work_id != 'None':
                     ref = '%s:%s' % (self.options.bible_work_id, ref)
 
-            elif file.endswith('studynotes.xhtml'):
+            elif filename.endswith('studynotes.xhtml'):
                 try:
                     ref = '%s:%s' % (self.options.work_id, parse_studybible_reference(verserange))
                 except IllegalReference:
                     a.replace_with('[%s]' % a.text)
-            elif file.endswith('intros.xhtml') or file.endswith('resources.xhtml') or file.endswith('footnotes.xhtml'):
+            elif filename.endswith('intros.xhtml') or filename.endswith('resources.xhtml') or filename.endswith('footnotes.xhtml'):
                 # link may be removed
                 a.replace_with('[%s]' % a.text)
             else:
-                logger.error('Link not handled %s', file)
+                logger.error('Link not handled %s', filename)
 
             if ref:
                 a['osisRef'] = ref
@@ -98,16 +102,17 @@ class HTML2OsisMixin(object):
             if 'onclick' in a.attrs:
                 del a['onclick']
 
-    def _fix_studynote_text_tags(self, input_soup):
+    def _fix_text_tags(self, input_soup):
         for s in input_soup.find_all('small'):
             # remove BOOK - NOTE ON XXX from studynotes
             if 'NOTE ON' in s.text:
                 s.extract()
             elif 'online at' in s.text or 'ESV' == s.text:
                 s.unwrap()
-            elif s.text in ['A.D.', 'B.C.', 'A.M.', 'P.M.']:
+            elif s.text in ['A.D.', 'B.C.', 'A.M.', 'P.M.', 'KJV']:
                 s.replace_with(s.text)
             else:
+                s.replace_with(s.text)
                 logger.error('still some unhandled small %s', s)
 
         self._fix_bibleref_links(input_soup)
@@ -123,6 +128,9 @@ class HTML2OsisMixin(object):
 
         for i in input_soup.find_all('ol'):
             i.name = 'list'
+
+        for i in input_soup.find_all('blockquote'):
+            i.unwrap()
 
         for i in input_soup.find_all('li'):
             i.name = 'item'
@@ -164,11 +172,16 @@ class HTML2OsisMixin(object):
             elif cls in ['profile-lead', 'facts-lead']:
                 s.name = 'hi'
                 s['type'] = 'emphasis'
-            elif cls in ['good-king', 'mixture-king', 'bad-king', 'normal', None]:
+            elif cls in ['good-king', 'mixture-king', 'bad-king', 'normal', 'smaller',
+                         'hebrew', 'paleo-hebrew-unicode', 'major-prophet', 'minor-prophet',
+                         'footnote', 'crossref', None]:
                 s.unwrap()
+            elif cls in ['underline']:
+                s.name = 'hi'
+                s['type'] = 'underline'
             else:
+                logger.warning('span class not known %s, in %s', cls, s)
                 s.unwrap()
-                logger.error('span class not known %s', cls)
 
         for s in input_soup.find_all('hi'):
             if len(s) == 0:
@@ -196,9 +209,14 @@ class HTML2OsisMixin(object):
             img['src'] = img['src'].replace('../Images/', 'images/')
             self.images.append(img['src'].split('/')[-1])
 
-    def fix_fact(self, fact_div):
+    def _fix_fact(self, fact_div):
         for n in fact_div.find_all('h2'):
             n.name = 'title'
+
+    def _all_fixes(self, soup):
+        self._fix_text_tags(soup)
+        self._fix_figure(soup)
+        self._fix_table(soup)
 
     def _adjust_studynotes(self, body):
         for rootlevel_tag in body.children:
@@ -215,9 +233,9 @@ class HTML2OsisMixin(object):
                 elif cls == 'object diagram':
                     self._fix_figure(rootlevel_tag)
                 elif cls == 'fact':
-                    self.fix_fact(rootlevel_tag)
+                    self._fix_fact(rootlevel_tag)
                 elif cls == 'profile':
-                    self.fix_fact(rootlevel_tag)
+                    self._fix_fact(rootlevel_tag)
                 elif cls == 'object info':
                     self._fix_table(rootlevel_tag)
                 else:
@@ -235,7 +253,7 @@ class HTML2OsisMixin(object):
             else:
                 logger.error('Not handled %s', rootlevel_tag)
 
-            self._fix_studynote_text_tags(rootlevel_tag)
+            self._fix_text_tags(rootlevel_tag)
             rootlevel_tag.name = 'div'
             rootlevel_tag['type'] = 'paragraph'
 
