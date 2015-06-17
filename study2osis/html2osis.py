@@ -1,3 +1,4 @@
+# encoding: utf-8
 """
     Copyright (C) 2014 Tuomas Airaksinen.
     See LICENCE.txt
@@ -9,7 +10,7 @@ from bs4 import NavigableString
 logger = logging.getLogger('html2osis')
 
 from .bible_data import BOOKREFS, TAGS_BOOK, TAGS_CHAPTES, TAGS_VERSES
-from .bibleref import IllegalReference, first_reference
+from .bibleref import IllegalReference, first_reference, Ref
 
 
 def parse_studybible_reference(html_id):
@@ -65,6 +66,22 @@ class HTML2OsisMixin(object):
     """
         HTML to OSIS fixes
     """
+    def _guess_range_end(self, ref, text):
+        # not an easy task to do robustly, disabling for now
+        return ref
+
+        range_dash = u'–'
+        if range_dash in text:
+            range_end = text.split(range_dash)[-1]
+            ref_ver = Ref(ref.split(' ')[0])
+            chap, book = ref_ver.chapter, ref_ver.book
+            if ':' in range_end:
+                chap, ver = range_end.split(':')
+            else:
+                ver = range_end.strip()
+            return '%s-%s.%s.%s'%(ref, book, chap, ver)
+        return ref
+
     def _fix_bibleref_links(self, input_soup):
         for a in input_soup.find_all('a'):
             if a['href'].startswith('http'):
@@ -79,6 +96,7 @@ class HTML2OsisMixin(object):
             ref = None
             if filename.endswith('text.xhtml'):
                 ref = parse_studybible_reference(verserange)
+                ref = self._guess_range_end(ref, a.text)
                 if self.options.bible_work_id != 'None':
                     ref = '%s:%s' % (self.options.bible_work_id, ref)
 
@@ -87,11 +105,13 @@ class HTML2OsisMixin(object):
                     ref = '%s:%s' % (self.options.work_id, parse_studybible_reference(verserange))
                 except IllegalReference:
                     a.replace_with('[%s]' % a.text)
-            elif filename.endswith('intros.xhtml') or filename.endswith('resources.xhtml') or filename.endswith('footnotes.xhtml'):
+            elif any([filename.endswith(i) for i in ['intros.xhtml', 'resources.xhtml',
+                                                     'footnotes.xhtml', 'main.xhtml', 'preferences.xhtml']]):
                 # link may be removed
                 a.replace_with('[%s]' % a.text)
             else:
-                logger.error('Link not handled %s', filename)
+                logger.error('Link not handled %s, %s', filename, a.text)
+                a.replace_with('[%s]' % a.text)
 
             if ref:
                 a['osisRef'] = ref
@@ -169,18 +189,21 @@ class HTML2OsisMixin(object):
             if cls == 'bible-version':
                 assert s.text.lower() in ['esv', 'lxx', 'kjv', 'mt', 'nkjv', 'nasb'], s.text
                 s.replace_with(s.text.upper())
+            elif cls in ['h3-inline']:
+                s.name = 'hi'
+                s['type'] = 'bold'
             elif cls in ['profile-lead', 'facts-lead']:
                 s.name = 'hi'
                 s['type'] = 'emphasis'
             elif cls in ['good-king', 'mixture-king', 'bad-king', 'normal', 'smaller',
                          'hebrew', 'paleo-hebrew-unicode', 'major-prophet', 'minor-prophet',
-                         'footnote', 'crossref', None]:
+                         'footnote', 'crossref', 'contributor-country', None]:
                 s.unwrap()
             elif cls in ['underline']:
                 s.name = 'hi'
                 s['type'] = 'underline'
             else:
-                logger.warning('span class not known %s, in %s', cls, s)
+                logger.warning('Span class not known %s, in %s', cls, s)
                 s.unwrap()
 
         for s in input_soup.find_all('hi'):

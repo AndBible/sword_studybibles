@@ -263,7 +263,7 @@ class Articles2Osis(HTML2OsisMixin):
 
     def _process_html_body(self, soup, fname):
         if fname.endswith('resources.xhtml') and len(soup.find_all('h1')) > 1:
-            logger.error('More than 1 h1 header in a file!')
+            logger.error('More than 1 h1 header in a file %s!', fname)
         titletag = soup.find('h1')
         if not titletag:
             titletag = soup.find('h2')
