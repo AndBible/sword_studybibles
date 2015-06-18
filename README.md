@@ -49,8 +49,9 @@ Known issues
  - By default verse linking is hard-wired to ESVS module. This is to workaround with Andbible
    <reference> rendering bug (or feature - this is still to be disputed).
    You may use --bible_work_id None if you wish not to use ESVS as your bible.
- - And bible does not resize images
- - And bible shows General book contents as a one big list instead of a tree
+ - AndBible: links to articles/resources in genbook do not work
+ - AndBible does not resize images
+ - AndBible shows General book contents as a one big list instead of a tree
  - Xiphos does not show emphasised text
  - Xiphos displays <q> as another paragraph (Heb.1)
 
