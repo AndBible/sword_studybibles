@@ -124,7 +124,7 @@ class Study2Osis(FixOverlappingVersesMixin, HTML2OsisMixin):
             raise Exception('No studynotes in zip file')
 
         if self.options.debug:
-            studynote_files = studynote_files[5:8]
+            studynote_files = studynote_files[:2]
 
         logger.info('Reading studynotes')
         for fn in studynote_files:
@@ -294,22 +294,23 @@ class Articles2Osis(HTML2OsisMixin):
             origfile = origfile.split(os.path.sep)[-1]
             origref = '%s#%s' % (origfile, id)
 
-            target_tag = None
+            link_map[origref] = self.get_full_ref(t)
+
+    def get_full_ref(self, t):
+        target_tag = None
+        if 'osisID' in t.attrs:
+            target_tag = t
+        if not target_tag:
+            target_tag = t.find_parent('div', type='section')
+        if not target_tag:
+            target_tag = t.find_parent('div', type='chapter')
+
+        target = target_tag['osisID']
+        for t in target_tag.parents:
             if 'osisID' in t.attrs:
-                target_tag = t
-            if not target_tag:
-                target_tag = t.find_parent('div', type='section')
-            if not target_tag:
-                target_tag = t.find_parent('div', type='chapter')
+                target = '%s/%s' % (t['osisID'], target)
 
-            target = target_tag['osisID']
-            for t in target_tag.parents:
-                if 'osisID' in t.attrs:
-                    target = '%s/%s' % (t['osisID'], target)
-
-            target = '%s:%s' % (self.options.work_id + '_articles', target)
-            link_map[origref] = target
-
+        return '%s:%s' % (self.options.work_id + '_articles', target)
 
     def _fix_section_one_level(self, soup, tag, type):
         h_tags = soup.find_all(tag, recursive=False)
@@ -366,7 +367,7 @@ class Articles2Osis(HTML2OsisMixin):
 
         titletag.name = 'title'
         titletag['origFile'] = self.current_filename
-        titletag.string = '* %s *' % title
+        titletag.string = title #'* %s *' % title
         self._fix_sections(soup)
         self._all_fixes(soup)
         soup.name = 'div'
@@ -395,6 +396,8 @@ class Articles2Osis(HTML2OsisMixin):
         self._process_toc(soup)
 
         bookintro_files = [i for i in epub_zip.namelist() if i.endswith('intros.xhtml')]
+        if self.options.debug:
+            bookintro_files = bookintro_files[:2]
 
         logger.info('Reading intros')
         for f in bookintro_files:
@@ -408,18 +411,17 @@ class Articles2Osis(HTML2OsisMixin):
             self.intros.append(bs)
 
         logger.info('Reading other resources')
-        resource_files = [i for i in epub_zip.namelist() if i.endswith('resources.xhtml')]
+        resource_files = [i for i in epub_zip.namelist() if i.endswith('resources.xhtml') and i.split(os.path.sep)[-1] not in self.used_resources]
+        if self.options.debug:
+            resource_files = resource_files[:2]
         for f in resource_files:
-            if f.split(os.path.sep)[-1] in self.used_resources:
+            self.current_filename = f
+            bs = self._give_soup(f).find('body')
+            if not self._process_html_body(bs, f):
                 continue
-            else:
-                self.current_filename = f
-                bs = self._give_soup(f).find('body')
-                if not self._process_html_body(bs, f):
-                    continue
-                for h1 in bs.find_all('h1'):
-                    h1.extract()
-                self.other.append(bs)
+            for h1 in bs.find_all('h1'):
+                h1.extract()
+            self.other.append(bs)
 
         # do not split sections in short articles
         for c in self.root_soup.find_all('div', type='chapter'):
@@ -428,8 +430,22 @@ class Articles2Osis(HTML2OsisMixin):
                     pt.unwrap()
 
         for pt in self.root_soup.find_all('div', type='section'):
-            pt['osisID'] = self.fix_osis_id('- ' + pt.title.text)
+            pt['osisID'] = self.fix_osis_id(pt.title.text)
+            #pt['osisID'] = '- ' + self.fix_osis_id(pt.title.text)
 
+    def generate_toc(self, node):
+        root_list = self.root_soup.new_tag('list', root_list='1')
+        for n in node.find_all('div', osisID=True, recursive=False):
+            item = self.root_soup.new_tag('item')
+            ref = self.get_full_ref(n) #, n['osisID'])
+            item.append(self.root_soup.new_tag('reference', osisRef=ref))
+            item.reference.string = n.title.text
+            root_list.append(item)
+            l = self.generate_toc(n)
+            if l:
+                root_list.append(l)
+        if root_list.contents:
+            return root_list
 
     def post_process(self):
         logger.info('Postprosessing resources')
@@ -455,9 +471,21 @@ class Articles2Osis(HTML2OsisMixin):
             if 'type' not in pt.attrs:
                 pt.unwrap()
 
+        for d in self.osistext.find_all('div', osisID=True):
+            children = d.find_all('div', osisID=True, recursive=False)
+            if children:
+                root_list = self.generate_toc(d)
+                if root_list:
+                    p = self.root_soup.new_tag('p')
+                    p.append(self.root_soup.new_tag('title'))
+                    p.title.string = 'Table of contents'
+                    p.append(root_list)
+                    d.find('div', osisID=True).insert_before(p)
+
         self.other.contents.sort(key=lambda x: x.attrs.get('osisID', ''))
 
     def write(self, output_filename):
+        logger.info('Writing articles into OSIS file %s', output_filename)
         output = codecs.open(output_filename, 'w', encoding='utf-8')
         if self.options.debug:
             output.write(self.root_soup.prettify())
