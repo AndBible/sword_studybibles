@@ -16,18 +16,23 @@ unzip -o mcarthur_module.zip -d ~/.sword/
 
 rm -r module_out
 mkdir module_out
-unzip esv_module.zip -d module_out
-unzip global_module.zip -d module_out
-unzip mcarthur_module.zip -d module_out
+unzip -o esv_module.zip -d module_out
+unzip -o global_module.zip -d module_out
+unzip -o mcarthur_module.zip -d module_out
 ssh taandroid mkdir /sdcard/jsword/$ESVDIR
 ssh taandroid mkdir /sdcard/jsword/$MCADIR
 ssh taandroid mkdir /sdcard/jsword/$GBLDIR
 
-opts="-v -r --progress --delete"
+opts="-d -v --progress --delete"
 
 rsync $opts module_out/$ESVDIR/ taandroid:/sdcard/jsword/$ESVDIR/
 rsync $opts module_out/$GBLDIR/ taandroid:/sdcard/jsword/$GBLDIR/
 rsync $opts module_out/$MCADIR/ taandroid:/sdcard/jsword/$MCADIR/
+
+opts="-v -r --size-only --progress --delete"
+rsync $opts module_out/$ESVDIR/images/ taandroid:/sdcard/jsword/$ESVDIR/images/
+rsync $opts module_out/$GBLDIR/images/ taandroid:/sdcard/jsword/$GBLDIR/images/
+rsync $opts module_out/$MCADIR/images/ taandroid:/sdcard/jsword/$MCADIR/images/
 
 scp module_out/mods.d/*.conf taandroid:/sdcard/jsword/mods.d/
 ssh taandroid chmod -R 777 /sdcard/jsword
