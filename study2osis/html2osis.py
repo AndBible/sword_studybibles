@@ -104,7 +104,8 @@ class HTML2OsisMixin(object):
                 try:
                     ref = '%s:%s' % (self.options.work_id, parse_studybible_reference(verserange))
                 except IllegalReference:
-                    a.replace_with('[%s]' % a.text)
+                    a['postpone'] = '1'
+                    a['origRef'] = a['href']
             elif any([filename.endswith(i) for i in ['footnotes.xhtml', 'main.xhtml', 'preferences.xhtml']]):
                 logger.warning('Link not handled %s, %s', filename, a.text)
                 a.replace_with('[%s]' % a.text)

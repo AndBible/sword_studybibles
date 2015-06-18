@@ -91,7 +91,7 @@ class Study2Osis(FixOverlappingVersesMixin, HTML2OsisMixin):
             if t.find_parent('header') or 'id' not in t.attrs:
                 continue
             id = t['id']
-            origfile = t['origFile'].split('/')[-1]
+            origfile = t['origFile'].split(os.path.sep)[-1]
             origref = '%s#%s' % (origfile, id)
             target = t.find_parent('div', annotateType='commentary')['annotateRef'].split(' ')[0]
             self.link_map[origref] = '%s:%s' % (self.options.work_id, target)
@@ -115,7 +115,7 @@ class Study2Osis(FixOverlappingVersesMixin, HTML2OsisMixin):
             raise Exception('No studynotes in zip file')
 
         if self.options.debug:
-            studynote_files = studynote_files[:1]
+            studynote_files = studynote_files[:2]
 
         logger.info('Reading studynotes')
         for fn in studynote_files:
@@ -245,6 +245,7 @@ class Articles2Osis(HTML2OsisMixin):
         self.options = options
         self.current_filename = ''
         self.images = []
+        self.used_resources = []
 
         template = jinja2.Template(open(GENBOOK_TEMPLATE_XML).read())
         output_xml = BeautifulSoup(template.render(title=options.title, author='-', work_id=options.work_id), 'xml')
@@ -252,9 +253,11 @@ class Articles2Osis(HTML2OsisMixin):
         self.osistext = output_xml.find('osisText')
         self.articles = output_xml.new_tag('div', type='book', osisID='Articles')
         self.intros = output_xml.new_tag('div', type='book', osisID='Book introductions')
+        self.other = output_xml.new_tag('div', type='book', osisID='Other resources')
 
         self.osistext.append(self.intros)
         self.osistext.append(self.articles)
+        self.osistext.append(self.other)
         self.path = HTML_DIRECTORY[0]
 
     def collect_linkmap(self, link_map):
@@ -266,7 +269,7 @@ class Articles2Osis(HTML2OsisMixin):
                 continue
 
             id = t['id']
-            origfile = t['origFile'].split('/')[-1]
+            origfile = t['origFile'].split(os.path.sep)[-1]
             origref = '%s#%s' % (origfile, id)
 
             target_tag = t.find_parent('div', type='section')
@@ -340,6 +343,7 @@ class Articles2Osis(HTML2OsisMixin):
         for itm in toc_soup.find_all('li'):
             fname = itm.find('a')['href'].split('#')[0]
             if fname.endswith('resources.xhtml'):
+                self.used_resources.append(fname.split(os.path.sep)[-1])
                 self.current_filename = fname
                 soup = self._give_soup(os.path.join(self.path, fname)).find('body')
                 self._process_html_body(soup, fname)
@@ -362,6 +366,19 @@ class Articles2Osis(HTML2OsisMixin):
             for h1 in bs.find_all('h1'):
                 h1.extract()
             self.intros.append(bs)
+
+        logger.info('Reading other resources')
+        resource_files = [i for i in epub_zip.namelist() if i.endswith('resources.xhtml')]
+        for f in resource_files:
+            if f.split(os.path.sep)[-1] in self.used_resources:
+                continue
+            else:
+                self.current_filename = f
+                bs = self._give_soup(f).find('body')
+                self._process_html_body(bs, f)
+                for h1 in bs.find_all('h1'):
+                    h1.extract()
+                self.other.append(bs)
 
         # do not split sections in short articles
         for c in self.root_soup.find_all('div', type='chapter'):
