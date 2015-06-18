@@ -271,9 +271,9 @@ class Articles2Osis(HTML2OsisMixin):
         self.path = HTML_DIRECTORY[0]
 
     def fix_osis_id(self, osisid):
-        # remove illegal characters from osisIDs
-        for i in u':();—/':
-            osisid = osisid.replace(i, '')
+        """Remove illegal characters from osisIDs"""
+        for i in u':();—/.,[]{}':
+            osisid = osisid.replace(i, ' ').strip()
         return osisid
 
     def collect_linkmap(self, link_map):
@@ -349,8 +349,19 @@ class Articles2Osis(HTML2OsisMixin):
             titletag = soup.find('h3')
         if not titletag:
             logger.error('No title in %s, skipping.', fname)
-            return
+            return False
+
         title = titletag.text.strip(' \n')
+
+        # Manually one inconsistency in ESV Study Bible (should does not affect other works)
+        if title in [u'Ezra—History of Salvation in the Old Testament', u'Song of Solomon—History of Salvation in the Old Testament']:
+            target = self.articles.find(osisID='History of Salvation in the Old Testament  Preparing the Way for Christ')
+            self._fix_sections(soup)
+            self._all_fixes(soup)
+            for i in soup.children:
+                target.append(i)
+            return False
+
         titletag.name = 'title'
         titletag['origFile'] = self.current_filename
         titletag.string = '* %s *' % title
@@ -360,7 +371,7 @@ class Articles2Osis(HTML2OsisMixin):
         soup['type'] = 'chapter'
         soup['osisID'] = self.fix_osis_id(title)
         soup['origFile'] = fname
-        self.articles.append(soup)
+        #self.articles.append(soup)
         return True
 
 
@@ -372,6 +383,7 @@ class Articles2Osis(HTML2OsisMixin):
                 self.current_filename = fname
                 soup = self._give_soup(os.path.join(self.path, fname)).find('body')
                 self._process_html_body(soup, fname)
+                self.articles.append(soup)
 
     def read_intros_and_articles(self, epub_zip):
         self.zip = epub_zip
@@ -440,6 +452,8 @@ class Articles2Osis(HTML2OsisMixin):
         for pt in self.root_soup.find_all('div'):
             if 'type' not in pt.attrs:
                 pt.unwrap()
+
+        self.other.contents.sort(key=lambda x: x.attrs.get('osisID', ''))
 
     def write(self, output_filename):
         output = codecs.open(output_filename, 'w', encoding='utf-8')

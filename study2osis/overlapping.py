@@ -221,11 +221,7 @@ class FixOverlappingVersesMixin(object):
     def _sort_links(self):
         # Sort links
         for ref_links_list in self.osistext.find_all('list', cls='reference_links'):
-            items = list(ref_links_list.children)
-            items.sort(key=lambda x: Ref(x.reference['osisRef'].split(':')[1]))
-            ref_links_list.clear()
-            for i in items:
-                ref_links_list.append(i)
+            ref_links_list.contents.sort(key=lambda x: Ref(x.reference['osisRef'].split(':')[1]))
 
     def _create_empty_comment(self, verse):
         if isinstance(verse, (list, set)):
