@@ -289,6 +289,9 @@ class Articles2Osis(HTML2OsisMixin):
                 origfile = t['origFile']
             else:
                 p = t.find_parent(origFile=True)
+                if not p:
+                    logger.error('origFile could not be found for %s', t)
+                    continue
                 origfile = p['origFile']
 
             origfile = origfile.split(os.path.sep)[-1]
