@@ -83,6 +83,28 @@ class Study2Osis(FixOverlappingVersesMixin, HTML2OsisMixin):
         self._adjust_studynotes(body)
         self._write_studynotes_into_osis(body)
 
+    def _collect_linkmap(self):
+        """
+            Collect mapping from HTML ids to osisRefs
+        """
+        for t in self.osistext.find_all('title'):
+            if t.find_parent('header') or 'id' not in t.attrs:
+                continue
+            id = t['id']
+            origfile = t['origFile'].split('/')[-1]
+            origref = '%s#%s' % (origfile, id)
+            target = t.find_parent('div', annotateType='commentary')['annotateRef'].split(' ')[0]
+            self.link_map[origref] = '%s:%s' % (self.options.work_id, target)
+
+    def _fix_postponed_references(self):
+        """ Fix postponed reference links from the mapping collected in self.link_map"""
+        for r in itertools.chain(*[i.find_all('reference', postpone='1') for i in (self.osistext, self.articles.osistext)]):
+            if r['origRef'] in self.link_map:
+                r['osisRef'] = self.link_map[r['origRef']]
+            else:
+                logger.error('link not found %s', r['origRef'])
+
+
     def process_epub(self, epub_filename, output_filename=None, assume_zip=False):
         if not zipfile.is_zipfile(epub_filename):
             raise Exception('Zip file assumed!')
@@ -103,47 +125,12 @@ class Study2Osis(FixOverlappingVersesMixin, HTML2OsisMixin):
             self._read_studynotes_file(data_in)
 
         self.fix_overlapping_ranges()
-
-        for t in self.osistext.find_all('title'):
-            if t.find_parent('header') or 'id' not in t.attrs:
-                continue
-            id = t['id']
-            origfile = t['origFile'].split('/')[-1]
-            origref = '%s#%s' % (origfile, id)
-            target = t.find_parent('div', annotateType='commentary')['annotateRef'].split(' ')[0]
-            self.link_map[origref] = '%s:%s' % (self.options.work_id, target)
-
+        self._collect_linkmap()
         self.articles = Articles2Osis(self.options)
         self.articles.read_intros_and_articles(epub_zip)
-
-        for t in self.articles.osistext.find_all('title'):
-            if t.find_parent('header') or 'id' not in t.attrs:
-                continue
-
-            id = t['id']
-            origfile = t['origFile'].split('/')[-1]
-            origref = '%s#%s' % (origfile, id)
-
-            target_tag = t.find_parent('div', type='section')
-            if not target_tag:
-                target_tag = t.find_parent('div', type='chapter')
-
-            target = target_tag['osisID']
-            for t in target_tag.parents:
-                if 'osisID' in t.attrs:
-                    target = '%s/%s' % (t['osisID'], target)
-
-            target = '%s:%s' % (self.options.work_id + '_articles', target)
-
-            self.link_map[origref] = target
-
+        self.articles.collect_linkmap(self.link_map)
         self.articles.post_process()
-
-        for r in itertools.chain(*[i.find_all('reference', postpone='1') for i in (self.osistext, self.articles.osistext)]):
-            if r['origRef'] in self.link_map:
-                r['osisRef'] = self.link_map[r['origRef']]
-            else:
-                logger.error('link not found %s', r['origRef'])
+        self._fix_postponed_references()
 
         if self.options.sword:
             self.make_sword_module(epub_zip, output_filename, epub_filename)
@@ -269,6 +256,31 @@ class Articles2Osis(HTML2OsisMixin):
         self.osistext.append(self.intros)
         self.osistext.append(self.articles)
         self.path = HTML_DIRECTORY[0]
+
+    def collect_linkmap(self, link_map):
+        """
+            Collect mapping from HTML ids to osisRefs
+        """
+        for t in self.osistext.find_all('title'):
+            if t.find_parent('header') or 'id' not in t.attrs:
+                continue
+
+            id = t['id']
+            origfile = t['origFile'].split('/')[-1]
+            origref = '%s#%s' % (origfile, id)
+
+            target_tag = t.find_parent('div', type='section')
+            if not target_tag:
+                target_tag = t.find_parent('div', type='chapter')
+
+            target = target_tag['osisID']
+            for t in target_tag.parents:
+                if 'osisID' in t.attrs:
+                    target = '%s/%s' % (t['osisID'], target)
+
+            target = '%s:%s' % (self.options.work_id + '_articles', target)
+            link_map[origref] = target
+
 
     def _fix_section_one_level(self, soup, tag, type):
         h_tags = soup.find_all(tag, recursive=False)
