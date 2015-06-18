@@ -105,10 +105,12 @@ class HTML2OsisMixin(object):
                     ref = '%s:%s' % (self.options.work_id, parse_studybible_reference(verserange))
                 except IllegalReference:
                     a.replace_with('[%s]' % a.text)
-            elif any([filename.endswith(i) for i in ['intros.xhtml', 'resources.xhtml',
-                                                     'footnotes.xhtml', 'main.xhtml', 'preferences.xhtml']]):
-                # link may be removed
+            elif any([filename.endswith(i) for i in ['footnotes.xhtml', 'main.xhtml', 'preferences.xhtml']]):
+                logger.warning('Link not handled %s, %s', filename, a.text)
                 a.replace_with('[%s]' % a.text)
+            elif any([filename.endswith(i) for i in ['intros.xhtml', 'resources.xhtml']]):
+                a['postpone'] = '1'
+                a['origRef'] = a['href']
             else:
                 logger.error('Link not handled %s, %s', filename, a.text)
                 a.replace_with('[%s]' % a.text)
@@ -220,6 +222,7 @@ class HTML2OsisMixin(object):
             n.name = 'cell'
         for p in table_div.find_all('h3'):
             p.name = 'title'
+            p['origFile'] = self.current_filename
 
         for p in table_div.find_all('p'):
             p.name = 'div'
@@ -235,6 +238,7 @@ class HTML2OsisMixin(object):
     def _fix_fact(self, fact_div):
         for n in fact_div.find_all('h2'):
             n.name = 'title'
+            n['origFile'] = self.current_filename
 
     def _all_fixes(self, soup):
         self._fix_text_tags(soup)

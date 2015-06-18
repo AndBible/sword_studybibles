@@ -2,7 +2,7 @@
     Copyright (C) 2015 Tuomas Airaksinen.
     See LICENCE.txt
 """
-import os, zipfile, tempfile, codecs, shutil, subprocess, logging
+import os, zipfile, tempfile, codecs, shutil, subprocess, logging, itertools
 
 from bs4 import BeautifulSoup
 import jinja2
@@ -56,6 +56,7 @@ class Study2Osis(FixOverlappingVersesMixin, HTML2OsisMixin):
         self.verse_comment_dict = {}
         self.verse_comments_all_dict = {} #list of comments that appear on verses
         self.images = []
+        self.link_map = {}
 
         template = jinja2.Template(open(COMMENTARY_TEMPLATE_XML).read())
         output_xml = BeautifulSoup(template.render(title=options.title, work_id=options.work_id), 'xml')
@@ -98,12 +99,51 @@ class Study2Osis(FixOverlappingVersesMixin, HTML2OsisMixin):
         for fn in studynote_files:
             logger.debug('Reading studynotes %s %s', studynote_files.index(fn), fn)
             data_in = epub_zip.read(fn)
+            self.current_filename = fn
             self._read_studynotes_file(data_in)
 
         self.fix_overlapping_ranges()
 
+        for t in self.osistext.find_all('title'):
+            if t.find_parent('header') or 'id' not in t.attrs:
+                continue
+            id = t['id']
+            origfile = t['origFile'].split('/')[-1]
+            origref = '%s#%s' % (origfile, id)
+            target = t.find_parent('div', annotateType='commentary')['annotateRef'].split(' ')[0]
+            self.link_map[origref] = '%s:%s' % (self.options.work_id, target)
+
         self.articles = Articles2Osis(self.options)
         self.articles.read_intros_and_articles(epub_zip)
+
+        for t in self.articles.osistext.find_all('title'):
+            if t.find_parent('header') or 'id' not in t.attrs:
+                continue
+
+            id = t['id']
+            origfile = t['origFile'].split('/')[-1]
+            origref = '%s#%s' % (origfile, id)
+
+            target_tag = t.find_parent('div', type='section')
+            if not target_tag:
+                target_tag = t.find_parent('div', type='chapter')
+
+            target = target_tag['osisID']
+            for t in target_tag.parents:
+                if 'osisID' in t.attrs:
+                    target = '%s/%s' % (t['osisID'], target)
+
+            target = '%s:%s' % (self.options.work_id + '_articles', target)
+
+            self.link_map[origref] = target
+
+        self.articles.post_process()
+
+        for r in itertools.chain(*[i.find_all('reference', postpone='1') for i in (self.osistext, self.articles.osistext)]):
+            if r['origRef'] in self.link_map:
+                r['osisRef'] = self.link_map[r['origRef']]
+            else:
+                logger.error('link not found %s', r['origRef'])
 
         if self.options.sword:
             self.make_sword_module(epub_zip, output_filename, epub_filename)
@@ -111,6 +151,7 @@ class Study2Osis(FixOverlappingVersesMixin, HTML2OsisMixin):
         else:
             output_filename = output_filename or '%s.xml' % epub_filename.rsplit('.')[0]
             self.write_osis_file(output_filename)
+            self.articles.write('articles_'+output_filename)
         if epub_zip:
             epub_zip.close()
 
@@ -215,7 +256,7 @@ class Articles2Osis(HTML2OsisMixin):
         if isinstance(options, dict):
             options = dict_to_options(options)
         self.options = options
-
+        self.current_filename = ''
         self.images = []
 
         template = jinja2.Template(open(GENBOOK_TEMPLATE_XML).read())
@@ -236,12 +277,10 @@ class Articles2Osis(HTML2OsisMixin):
             next_siblings = list(start.next_siblings)
             start['old_name'] = start.name
             start.name = 'title'
-            if tag =='h3':
-                start.name = 'p'
-                hi = self.root_soup.new_tag('hi', type='bold')
-                for c in start.children:
-                    hi.append(c.extract())
-                start.append(hi)
+            start['origFile'] = self.current_filename
+
+            if tag == 'h3':
+                start['h3'] = 1
 
             section = self.root_soup.new_tag('div', type=type)
 
@@ -274,13 +313,14 @@ class Articles2Osis(HTML2OsisMixin):
             return
         title = titletag.text.strip(' \n')
         titletag.name = 'title'
+        titletag['origFile'] = self.current_filename
         titletag.string = '* %s *' % title
         self._fix_sections(soup)
         self._all_fixes(soup)
         soup.name = 'div'
         soup['type'] = 'chapter'
         soup['osisID'] = title
-        soup['origfile'] = fname
+        soup['origFile'] = fname
         self.articles.append(soup)
 
 
@@ -288,6 +328,7 @@ class Articles2Osis(HTML2OsisMixin):
         for itm in toc_soup.find_all('li'):
             fname = itm.find('a')['href'].split('#')[0]
             if fname.endswith('resources.xhtml'):
+                self.current_filename = fname
                 soup = self._give_soup(os.path.join(self.path, fname)).find('body')
                 self._process_html_body(soup, fname)
 
@@ -303,11 +344,30 @@ class Articles2Osis(HTML2OsisMixin):
         logger.info('Reading intros')
         for f in bookintro_files:
             logger.debug('Reading intros %s', f)
+            self.current_filename = f
             bs = self._give_soup(f).find('body')
             self._process_html_body(bs, f)
             for h1 in bs.find_all('h1'):
                 h1.extract()
             self.intros.append(bs)
+
+        # do not split sections in short articles
+        for c in self.root_soup.find_all('div', type='chapter'):
+            if len(c.text) < 20000:
+                for pt in c.find_all('div', type='section'):
+                    pt.unwrap()
+
+        for pt in self.root_soup.find_all('div', type='section'):
+            pt['osisID'] = '- ' + pt.title.text
+
+
+    def post_process(self):
+        for t in self.root_soup.find_all('title', h3=1):
+                t.name = 'p'
+                hi = self.root_soup.new_tag('hi', type='bold')
+                for c in t.children:
+                    hi.append(c.extract())
+                t.append(hi)
 
         for p in self.root_soup.find_all('div', type='paragraph'):
             p.name = 'p'
@@ -320,22 +380,16 @@ class Articles2Osis(HTML2OsisMixin):
         for pt in self.root_soup.find_all('div', type='subSection'):
             pt.unwrap()
 
-        # do not split sections in short articles
-        for c in self.root_soup.find_all('div', type='chapter'):
-            if len(c.text) < 20000:
-                for pt in c.find_all('div', type='section'):
-                    pt.unwrap()
-
-        for pt in self.root_soup.find_all('div', type='section'):
-            pt['osisID'] = '- ' + pt.title.text
-
         for pt in self.root_soup.find_all('div'):
             if 'type' not in pt.attrs:
                 pt.unwrap()
 
     def write(self, output_filename):
         output = codecs.open(output_filename, 'w', encoding='utf-8')
-        output.write(unicode(self.root_soup))
+        if self.options.debug:
+            output.write(self.root_soup.prettify())
+        else:
+            output.write(unicode(self.root_soup))
         output.close()
 
     def _give_soup(self, fname):

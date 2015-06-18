@@ -129,27 +129,8 @@ def test_genbook():
     #s.root_soup = s.osistext = osistext
     s._process_html_body(osistext.find('body'), 'fname')
     result = unicode(s.root_soup) #.prettify()
-
-    result_txt = u'''<?xml version="1.0" encoding="utf-8"?>
-<osis xmlns="http://www.bibletechnologies.net/2003/OSIS/namespace" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.bibletechnologies.net/2003/OSIS/namespace http://www.bibletechnologies.net/osisCore.2.1.1.xsd">
-<osisText osisIDWork="ESVN" osisRefWork="book" xml:lang="en">
-<header>
-<work osisWork="ESVN">
-<title>ESVN</title>
-<creator role="aut">-</creator>
-<identifier type="OSIS">ESVN</identifier>
-<refSystem>Bible.NRSV</refSystem>
-<language>en</language>
-</work>
-</header>
-<div osisID="EsvArticles" type="book"><div origfile="fname" osisID="h1 title" type="majorSection">
-<title>h1 title</title>
-<div type="section"><title>h2 section</title>
-<div type="subsection"><title>h3 subsection</title>
-<div type="paragraph">paragraph</div>
-</div></div></div></div></osisText>
-</osis>'''
-    assert result == result_txt
+    print repr(result)
+    assert result == u'<?xml version="1.0" encoding="utf-8"?>\n<osis xmlns="http://www.bibletechnologies.net/2003/OSIS/namespace" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.bibletechnologies.net/2003/OSIS/namespace http://www.bibletechnologies.net/osisCore.2.1.1.xsd">\n<osisText osisIDWork="ESVN" osisRefWork="book" xml:lang="en">\n<header>\n<work osisWork="ESVN">\n<title>ESVN</title>\n<creator role="aut">-</creator>\n<identifier type="OSIS">ESVN</identifier>\n<refSystem>Bible.NRSV</refSystem>\n<language>en</language>\n</work>\n</header>\n<div osisID="Book introductions" type="book"/><div osisID="Articles" type="book"><div origFile="fname" osisID="h1 title" type="chapter">\n<title origFile="">* h1 title *</title>\n<div type="section"><title old_name="h2" origFile="">h2 section</title>\n<div type="subSection"><title h3="1" old_name="h3" origFile="">h3 subsection</title>\n<div type="paragraph">paragraph</div>\n</div></div></div></div></osisText>\n</osis>'
 
 def test_genbook2():
     osistext = BeautifulSoup("""
@@ -169,29 +150,10 @@ def test_genbook2():
     #s.root_soup = s.osistext = osistext
     s._process_html_body(osistext.find('body'), 'fname')
     result = unicode(s.root_soup) #.prettify()
-    assert result == """<?xml version="1.0" encoding="utf-8"?>
-<osis xmlns="http://www.bibletechnologies.net/2003/OSIS/namespace" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.bibletechnologies.net/2003/OSIS/namespace http://www.bibletechnologies.net/osisCore.2.1.1.xsd">
-<osisText osisIDWork="ESVN" osisRefWork="book" xml:lang="en">
-<header>
-<work osisWork="ESVN">
-<title>ESVN</title>
-<creator role="aut">-</creator>
-<identifier type="OSIS">ESVN</identifier>
-<refSystem>Bible.NRSV</refSystem>
-<language>en</language>
-</work>
-</header>
-<div osisID="EsvArticles" type="book"><div origfile="fname" osisID="h1 title" type="majorSection">
-<title>h1 title</title>
-<div type="section"><title>h2 section</title>
-<div type="subsection"><title>h3 subsection</title>
-<div type="paragraph">paragraph</div>
-</div><div type="subsection"><title>h3 another</title>
-<div type="paragraph">another para</div>
-</div></div><div type="section"><title>h2 another</title>
-<div type="paragraph">under h2 another</div>
-</div></div></div></osisText>
-</osis>"""
+    print repr(result)
+    assert result == u'<?xml version="1.0" encoding="utf-8"?>\n<osis xmlns="http://www.bibletechnologies.net/2003/OSIS/namespace" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.bibletechnologies.net/2003/OSIS/namespace http://www.bibletechnologies.net/osisCore.2.1.1.xsd">\n<osisText osisIDWork="ESVN" osisRefWork="book" xml:lang="en">\n<header>\n<work osisWork="ESVN">\n<title>ESVN</title>\n<creator role="aut">-</creator>\n<identifier type="OSIS">ESVN</identifier>\n<refSystem>Bible.NRSV</refSystem>\n<language>en</language>\n</work>\n</header>\n<div osisID="Book introductions" type="book"/><div osisID="Articles" type="book"><div origFile="fname" osisID="h1 title" type="chapter">\n<title origFile="">* h1 title *</title>\n<div type="section"><title old_name="h2" origFile="">h2 section</title>\n<div type="subSection"><title h3="1" old_name="h3" origFile="">h3 subsection</title>\n<div type="paragraph">paragraph</div>\n</div><div type="subSection"><title h3="1" old_name="h3" origFile="">h3 another</title>\n<div type="paragraph">another para</div>\n</div></div><div type="section"><title old_name="h2" origFile="">h2 another</title>\n<div type="paragraph">under h2 another</div>\n</div></div></div></osisText>\n</osis>'
+
+
 
 def test_expand_ranges():
     assert expand_ranges("Gen.2.4-Gen.2.6") == "Gen.2.4 Gen.2.5 Gen.2.6"
