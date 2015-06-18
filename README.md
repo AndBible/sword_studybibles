@@ -55,7 +55,6 @@ Known issues
 
 TODO
 ----
-  - Cross-linking to intros/articles does is not implemented yet
   - In links, verse range end could be checked too.
   - Backreferences from comments to articles
   - Write manually some TOCs in genbook
