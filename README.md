@@ -37,11 +37,12 @@ To convert ePub to SWORD module (compressed in a zip file), run command
 
     python studybible_to_osis.py your_book.epub your_module.zip --sword
 
-Quality considerations
-----------------------
- - Studynotes, charts, figures etc
- - Tested with Andbible & Xiphos
- - Verse ranges fixed and links added
+Quality
+-------
+ - All resources included: studynotes, charts, figures, articles etc
+ - Articles and resources as a general book module (--sword will pack them in single zip file)
+ - Convenient links are added from comments to larger-range comments
+ - Tested with AndBible & Xiphos -- software is  BETA because of limited testing
 
 Known issues
 ------------
