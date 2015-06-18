@@ -264,8 +264,8 @@ class Articles2Osis(HTML2OsisMixin):
         self.root_soup = output_xml
         self.osistext = output_xml.find('osisText')
         self.articles = output_xml.new_tag('div', type='book', osisID='Articles')
-        self.intros = output_xml.new_tag('div', type='book', osisID='Book introductions')
-        self.other = output_xml.new_tag('div', type='book', osisID='Other resources')
+        self.intros = output_xml.new_tag('div', type='book', osisID='Book_introductions')
+        self.other = output_xml.new_tag('div', type='book', osisID='Other_resources')
 
         self.osistext.append(self.intros)
         self.osistext.append(self.articles)
@@ -274,8 +274,8 @@ class Articles2Osis(HTML2OsisMixin):
 
     def fix_osis_id(self, osisid):
         """Remove illegal characters from osisIDs"""
-        for i in u':();—/.,[]{}':
-            osisid = osisid.replace(i, ' ').strip()
+        for i in u':();—/.,[]{} ':
+            osisid = osisid.replace(i, '_').strip()
         return osisid
 
     def collect_linkmap(self, link_map):
@@ -358,7 +358,7 @@ class Articles2Osis(HTML2OsisMixin):
 
         # Manually one inconsistency in ESV Study Bible (should does not affect other works)
         if title in [u'Ezra—History of Salvation in the Old Testament', u'Song of Solomon—History of Salvation in the Old Testament']:
-            target = self.articles.find(osisID='History of Salvation in the Old Testament  Preparing the Way for Christ')
+            target = self.articles.find(osisID=self.fix_osis_id('History of Salvation in the Old Testament  Preparing the Way for Christ'))
             self._fix_sections(soup)
             self._all_fixes(soup)
             for i in soup.children:
@@ -434,12 +434,13 @@ class Articles2Osis(HTML2OsisMixin):
             #pt['osisID'] = '- ' + self.fix_osis_id(pt.title.text)
 
     def generate_toc(self, node):
-        root_list = self.root_soup.new_tag('list', root_list='1')
+        root_list = self.root_soup.new_tag('list')
         for n in node.find_all('div', osisID=True, recursive=False):
             item = self.root_soup.new_tag('item')
-            ref = self.get_full_ref(n) #, n['osisID'])
+            ref = self.get_full_ref(n)
             item.append(self.root_soup.new_tag('reference', osisRef=ref))
-            item.reference.string = n.title.text
+            title_tag = n.find('title', recursive=False)
+            item.reference.string = title_tag.text if title_tag else n['osisID']
             root_list.append(item)
             l = self.generate_toc(n)
             if l:
@@ -471,6 +472,8 @@ class Articles2Osis(HTML2OsisMixin):
             if 'type' not in pt.attrs:
                 pt.unwrap()
 
+        self.other.contents.sort(key=lambda x: x.attrs.get('osisID', ''))
+
         for d in self.osistext.find_all('div', osisID=True):
             children = d.find_all('div', osisID=True, recursive=False)
             if children:
@@ -482,7 +485,6 @@ class Articles2Osis(HTML2OsisMixin):
                     p.append(root_list)
                     d.find('div', osisID=True).insert_before(p)
 
-        self.other.contents.sort(key=lambda x: x.attrs.get('osisID', ''))
 
     def write(self, output_filename):
         logger.info('Writing articles into OSIS file %s', output_filename)
