@@ -87,17 +87,23 @@ class Study2Osis(FixOverlappingVersesMixin, HTML2OsisMixin):
         """
             Collect mapping from HTML ids to osisRefs
         """
-        for t in self.osistext.find_all('title'):
-            if t.find_parent('header') or 'id' not in t.attrs:
-                continue
+        logger.info('Collecting linkmap from studynotes')
+        for t in self.osistext.find_all(id=True):
             id = t['id']
-            origfile = t['origFile'].split(os.path.sep)[-1]
+            if 'origFile' in t.attrs:
+                origfile = t['origFile']
+            else:
+                p = t.find_parent(origFile=True)
+                origfile = p['origFile']
+
+            origfile = origfile.split(os.path.sep)[-1]
             origref = '%s#%s' % (origfile, id)
             target = t.find_parent('div', annotateType='commentary')['annotateRef'].split(' ')[0]
             self.link_map[origref] = '%s:%s' % (self.options.work_id, target)
 
     def _fix_postponed_references(self):
         """ Fix postponed reference links from the mapping collected in self.link_map"""
+        logger.info('Fixing postponed references')
         for r in itertools.chain(*[i.find_all('reference', postpone='1') for i in (self.osistext, self.articles.osistext)]):
             if r['origRef'] in self.link_map:
                 r['osisRef'] = self.link_map[r['origRef']]
@@ -115,17 +121,19 @@ class Study2Osis(FixOverlappingVersesMixin, HTML2OsisMixin):
             raise Exception('No studynotes in zip file')
 
         if self.options.debug:
-            studynote_files = studynote_files[:2]
+            studynote_files = studynote_files[5:8]
 
         logger.info('Reading studynotes')
         for fn in studynote_files:
-            logger.debug('Reading studynotes %s %s', studynote_files.index(fn), fn)
+            logger.info('Reading studynotes %s %s', studynote_files.index(fn), fn)
             data_in = epub_zip.read(fn)
             self.current_filename = fn
             self._read_studynotes_file(data_in)
 
         self.fix_overlapping_ranges()
         self._collect_linkmap()
+        for i in self.osistext.find_all(unwrap=True):
+            i.unwrap()
         self.articles = Articles2Osis(self.options)
         self.articles.read_intros_and_articles(epub_zip)
         self.articles.collect_linkmap(self.link_map)
@@ -264,15 +272,23 @@ class Articles2Osis(HTML2OsisMixin):
         """
             Collect mapping from HTML ids to osisRefs
         """
-        for t in self.osistext.find_all('title'):
-            if t.find_parent('header') or 'id' not in t.attrs:
-                continue
-
+        logger.info('Collecting linkmap from resources')
+        for t in self.osistext.find_all(id=True):
             id = t['id']
-            origfile = t['origFile'].split(os.path.sep)[-1]
+            if 'origFile' in t.attrs:
+                origfile = t['origFile']
+            else:
+                p = t.find_parent(origFile=True)
+                origfile = p['origFile']
+
+            origfile = origfile.split(os.path.sep)[-1]
             origref = '%s#%s' % (origfile, id)
 
-            target_tag = t.find_parent('div', type='section')
+            target_tag = None
+            if 'osisID' in t.attrs:
+                target_tag = t
+            if not target_tag:
+                target_tag = t.find_parent('div', type='section')
             if not target_tag:
                 target_tag = t.find_parent('div', type='chapter')
 
@@ -297,7 +313,7 @@ class Articles2Osis(HTML2OsisMixin):
             if tag == 'h3':
                 start['h3'] = 1
 
-            section = self.root_soup.new_tag('div', type=type)
+            section = self.root_soup.new_tag('div', type=type, origFile=self.current_filename)
 
             start.wrap(section)
 
@@ -337,6 +353,7 @@ class Articles2Osis(HTML2OsisMixin):
         soup['osisID'] = title
         soup['origFile'] = fname
         self.articles.append(soup)
+        return True
 
 
     def _process_toc(self, toc_soup):
@@ -362,7 +379,8 @@ class Articles2Osis(HTML2OsisMixin):
             logger.debug('Reading intros %s', f)
             self.current_filename = f
             bs = self._give_soup(f).find('body')
-            self._process_html_body(bs, f)
+            if not self._process_html_body(bs, f):
+                continue
             for h1 in bs.find_all('h1'):
                 h1.extract()
             self.intros.append(bs)
@@ -375,7 +393,8 @@ class Articles2Osis(HTML2OsisMixin):
             else:
                 self.current_filename = f
                 bs = self._give_soup(f).find('body')
-                self._process_html_body(bs, f)
+                if not self._process_html_body(bs, f):
+                    continue
                 for h1 in bs.find_all('h1'):
                     h1.extract()
                 self.other.append(bs)
@@ -391,6 +410,7 @@ class Articles2Osis(HTML2OsisMixin):
 
 
     def post_process(self):
+        logger.info('Postprosessing resources')
         for t in self.root_soup.find_all('title', h3=1):
                 t.name = 'p'
                 hi = self.root_soup.new_tag('hi', type='bold')

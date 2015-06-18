@@ -131,7 +131,7 @@ class HTML2OsisMixin(object):
             if 'NOTE ON' in s.text:
                 s.extract()
             elif 'online at' in s.text or 'ESV' == s.text:
-                s.unwrap()
+                s['unwrap'] = '1'
             elif s.text in ['A.D.', 'B.C.', 'A.M.', 'P.M.', 'KJV']:
                 s.replace_with(s.text)
             else:
@@ -153,7 +153,7 @@ class HTML2OsisMixin(object):
             i.name = 'list'
 
         for i in input_soup.find_all('blockquote'):
-            i.unwrap()
+            i['unwrap'] = '1'
 
         for i in input_soup.find_all('li'):
             i.name = 'item'
@@ -201,13 +201,13 @@ class HTML2OsisMixin(object):
             elif cls in ['good-king', 'mixture-king', 'bad-king', 'normal', 'smaller',
                          'hebrew', 'paleo-hebrew-unicode', 'major-prophet', 'minor-prophet',
                          'footnote', 'crossref', 'contributor-country', None]:
-                s.unwrap()
+                s['unwrap'] = '1'
             elif cls in ['underline']:
                 s.name = 'hi'
                 s['type'] = 'underline'
             else:
                 logger.warning('Span class not known %s, in %s', cls, s)
-                s.unwrap()
+                s['unwrap'] = '1'
 
         for s in input_soup.find_all('hi'):
             if len(s) == 0:
@@ -316,6 +316,7 @@ class HTML2OsisMixin(object):
             book, chap, ver = first_reference(n['annotateRef'])
             chapref = '%s.%s' % (book, chap)
             verref = '%s.%s.%s' % (book, chap, ver)
+            n['origFile'] = self.current_filename
 
             if tag_level >= TAGS_BOOK:
                 bookdiv = bookdivs.get(book)
