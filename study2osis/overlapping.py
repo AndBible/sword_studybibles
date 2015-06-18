@@ -132,7 +132,7 @@ class FixOverlappingVersesMixin(object):
 
 
     def _expand_all_ranges(self):
-        all_comments = self.osistext.find_all('div', annotateType='commentary')
+        all_comments = self.osistext.find_all('div', annotateType='commentary', recursive=False)
 
         # first expand all ranges
         for comment in all_comments:
@@ -158,7 +158,7 @@ class FixOverlappingVersesMixin(object):
                 vl.add(comment)
 
     def _process_overlapping_verses(self):
-        all_comments = self.osistext.find_all('div', annotateType='commentary')
+        all_comments = self.osistext.find_all('div', annotateType='commentary', recursive=False)
         for comment in all_comments:
             if 'removed' in comment.attrs:
                 # this comment has been merged earlier
@@ -194,7 +194,7 @@ class FixOverlappingVersesMixin(object):
                     Step is optional -- if we leave this step, then those verses will be linked
             to the original verse in its range
         """
-        all_comments = self.osistext.find_all('div', annotateType='commentary')
+        all_comments = self.osistext.find_all('div', annotateType='commentary', recursive=False)
         for comment in all_comments:
             orig_verses = verses(expand_ranges(comment['origRef']))
             actual_verses = verses(comment)

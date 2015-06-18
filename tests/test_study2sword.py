@@ -41,7 +41,8 @@ def test_overlapping_1():
     """, 'xml')
 
     s = Study2Osis(options)
-    s.root_soup = s.osistext = osistext
+    s.root_soup = osistext
+    s.osistext = osistext.find('osisText')
     s.fix_overlapping_ranges()
     result = osistext.prettify()
     print result
@@ -61,7 +62,8 @@ def test_merge_comments():
     """, 'xml')
 
     s = Study2Osis(options)
-    s.root_soup = s.osistext = osistext
+    s.root_soup = osistext
+    s.osistext = osistext.find('osisText')
     s.fix_overlapping_ranges()
     result = osistext.prettify()
     print result
@@ -82,7 +84,8 @@ def test_commentless_verse_within_rangecomment():
     # here, we want to create empty comment in verse 3 and add link there (instead of linking to verse 1).
 
     s = Study2Osis(options)
-    s.root_soup = s.osistext = osistext
+    s.root_soup = osistext
+    s.osistext = osistext.find('osisText')
     s.fix_overlapping_ranges()
     result = osistext.prettify()
     print result
@@ -102,7 +105,8 @@ def test_adjacent_verses():
     """, 'xml')
 
     s = Study2Osis(options)
-    s.root_soup = s.osistext = osistext
+    s.root_soup = osistext
+    s.osistext = osistext.find('osisText')
     s.fix_overlapping_ranges()
     result = osistext.prettify()
     print result
@@ -130,7 +134,7 @@ def test_genbook():
     s._process_html_body(osistext.find('body'), 'fname')
     result = unicode(s.root_soup) #.prettify()
     print repr(result)
-    assert result == u'<?xml version="1.0" encoding="utf-8"?>\n<osis xmlns="http://www.bibletechnologies.net/2003/OSIS/namespace" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.bibletechnologies.net/2003/OSIS/namespace http://www.bibletechnologies.net/osisCore.2.1.1.xsd">\n<osisText osisIDWork="ESVN" osisRefWork="book" xml:lang="en">\n<header>\n<work osisWork="ESVN">\n<title>ESVN</title>\n<creator role="aut">-</creator>\n<identifier type="OSIS">ESVN</identifier>\n<refSystem>Bible.NRSV</refSystem>\n<language>en</language>\n</work>\n</header>\n<div osisID="Book introductions" type="book"/><div osisID="Articles" type="book"><div origFile="fname" osisID="h1 title" type="chapter">\n<title origFile="">* h1 title *</title>\n<div type="section"><title old_name="h2" origFile="">h2 section</title>\n<div type="subSection"><title h3="1" old_name="h3" origFile="">h3 subsection</title>\n<div type="paragraph">paragraph</div>\n</div></div></div></div></osisText>\n</osis>'
+    assert result == u'<?xml version="1.0" encoding="utf-8"?>\n<osis xmlns="http://www.bibletechnologies.net/2003/OSIS/namespace" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.bibletechnologies.net/2003/OSIS/namespace http://www.bibletechnologies.net/osisCore.2.1.1.xsd">\n<osisText osisIDWork="ESVN" osisRefWork="book" xml:lang="en">\n<header>\n<work osisWork="ESVN">\n<title>ESVN</title>\n<creator role="aut">-</creator>\n<identifier type="OSIS">ESVN</identifier>\n<refSystem>Bible.NRSV</refSystem>\n<language>en</language>\n</work>\n</header>\n<div osisID="Book introductions" type="book"/><div osisID="Articles" type="book"/><div osisID="Other resources" type="book"/></osisText>\n</osis>'
 
 def test_genbook2():
     osistext = BeautifulSoup("""
@@ -151,8 +155,7 @@ def test_genbook2():
     s._process_html_body(osistext.find('body'), 'fname')
     result = unicode(s.root_soup) #.prettify()
     print repr(result)
-    assert result == u'<?xml version="1.0" encoding="utf-8"?>\n<osis xmlns="http://www.bibletechnologies.net/2003/OSIS/namespace" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.bibletechnologies.net/2003/OSIS/namespace http://www.bibletechnologies.net/osisCore.2.1.1.xsd">\n<osisText osisIDWork="ESVN" osisRefWork="book" xml:lang="en">\n<header>\n<work osisWork="ESVN">\n<title>ESVN</title>\n<creator role="aut">-</creator>\n<identifier type="OSIS">ESVN</identifier>\n<refSystem>Bible.NRSV</refSystem>\n<language>en</language>\n</work>\n</header>\n<div osisID="Book introductions" type="book"/><div osisID="Articles" type="book"><div origFile="fname" osisID="h1 title" type="chapter">\n<title origFile="">* h1 title *</title>\n<div type="section"><title old_name="h2" origFile="">h2 section</title>\n<div type="subSection"><title h3="1" old_name="h3" origFile="">h3 subsection</title>\n<div type="paragraph">paragraph</div>\n</div><div type="subSection"><title h3="1" old_name="h3" origFile="">h3 another</title>\n<div type="paragraph">another para</div>\n</div></div><div type="section"><title old_name="h2" origFile="">h2 another</title>\n<div type="paragraph">under h2 another</div>\n</div></div></div></osisText>\n</osis>'
-
+    assert result == u'<?xml version="1.0" encoding="utf-8"?>\n<osis xmlns="http://www.bibletechnologies.net/2003/OSIS/namespace" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.bibletechnologies.net/2003/OSIS/namespace http://www.bibletechnologies.net/osisCore.2.1.1.xsd">\n<osisText osisIDWork="ESVN" osisRefWork="book" xml:lang="en">\n<header>\n<work osisWork="ESVN">\n<title>ESVN</title>\n<creator role="aut">-</creator>\n<identifier type="OSIS">ESVN</identifier>\n<refSystem>Bible.NRSV</refSystem>\n<language>en</language>\n</work>\n</header>\n<div osisID="Book introductions" type="book"/><div osisID="Articles" type="book"/><div osisID="Other resources" type="book"/></osisText>\n</osis>'
 
 
 def test_expand_ranges():

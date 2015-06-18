@@ -311,7 +311,7 @@ class HTML2OsisMixin(object):
         bookdivs = {}
         chapdivs = {}
         bookdiv, chapdiv, verdiv = None, None, None
-        for n in input_html.find_all('studynote'):
+        for n in input_html.find_all('studynote', recursive=False):
             n.name = 'div'
             book, chap, ver = first_reference(n['annotateRef'])
             chapref = '%s.%s' % (book, chap)

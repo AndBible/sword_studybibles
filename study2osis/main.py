@@ -3,7 +3,7 @@
     Copyright (C) 2015 Tuomas Airaksinen.
     See LICENCE.txt
 """
-import os, zipfile, tempfile, codecs, shutil, subprocess, logging, itertools
+import os, zipfile, tempfile, codecs, shutil, subprocess, logging, itertools, time
 
 from bs4 import BeautifulSoup
 import jinja2
@@ -114,6 +114,7 @@ class Study2Osis(FixOverlappingVersesMixin, HTML2OsisMixin):
                 logger.error('link not found %s', r['origRef'])
 
     def process_epub(self, epub_filename, output_filename=None, assume_zip=False):
+        time_start = time.time()
         if not zipfile.is_zipfile(epub_filename):
             raise Exception('Zip file assumed!')
 
@@ -127,7 +128,7 @@ class Study2Osis(FixOverlappingVersesMixin, HTML2OsisMixin):
 
         logger.info('Reading studynotes')
         for fn in studynote_files:
-            logger.info('Reading studynotes %s %s', studynote_files.index(fn), fn)
+            logger.debug('Reading studynotes %s %s', studynote_files.index(fn), fn)
             data_in = epub_zip.read(fn)
             self.current_filename = fn
             self._read_studynotes_file(data_in)
@@ -151,6 +152,7 @@ class Study2Osis(FixOverlappingVersesMixin, HTML2OsisMixin):
             self.articles.write('articles_'+output_filename)
         if epub_zip:
             epub_zip.close()
+        logger.info('Processing took %.2f minutes', (time.time()-time_start)/60.)
 
     def write_osis_file(self, output_filename):
         logger.info('Writing OSIS file %s', output_filename)
