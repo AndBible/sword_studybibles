@@ -200,7 +200,7 @@ class HTML2OsisMixin(object):
                 s['type'] = 'emphasis'
             elif cls in ['good-king', 'mixture-king', 'bad-king', 'normal', 'smaller',
                          'hebrew', 'paleo-hebrew-unicode', 'major-prophet', 'minor-prophet',
-                         'footnote', 'crossref', 'contributor-country', None]:
+                         'footnote', 'crossref', 'contributor-country', 'time', None]:
                 s['unwrap'] = '1'
             elif cls in ['underline']:
                 s.name = 'hi'

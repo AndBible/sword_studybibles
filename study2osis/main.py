@@ -1,3 +1,4 @@
+# encoding: utf-8
 """
     Copyright (C) 2015 Tuomas Airaksinen.
     See LICENCE.txt
@@ -107,9 +108,10 @@ class Study2Osis(FixOverlappingVersesMixin, HTML2OsisMixin):
         for r in itertools.chain(*[i.find_all('reference', postpone='1') for i in (self.osistext, self.articles.osistext)]):
             if r['origRef'] in self.link_map:
                 r['osisRef'] = self.link_map[r['origRef']]
+                del r['postpone']
             else:
+                r.replace_with('[%s]' % r.text)
                 logger.error('link not found %s', r['origRef'])
-
 
     def process_epub(self, epub_filename, output_filename=None, assume_zip=False):
         if not zipfile.is_zipfile(epub_filename):
@@ -268,6 +270,12 @@ class Articles2Osis(HTML2OsisMixin):
         self.osistext.append(self.other)
         self.path = HTML_DIRECTORY[0]
 
+    def fix_osis_id(self, osisid):
+        # remove illegal characters from osisIDs
+        for i in u':();—/':
+            osisid = osisid.replace(i, '')
+        return osisid
+
     def collect_linkmap(self, link_map):
         """
             Collect mapping from HTML ids to osisRefs
@@ -350,7 +358,7 @@ class Articles2Osis(HTML2OsisMixin):
         self._all_fixes(soup)
         soup.name = 'div'
         soup['type'] = 'chapter'
-        soup['osisID'] = title
+        soup['osisID'] = self.fix_osis_id(title)
         soup['origFile'] = fname
         self.articles.append(soup)
         return True
@@ -406,7 +414,7 @@ class Articles2Osis(HTML2OsisMixin):
                     pt.unwrap()
 
         for pt in self.root_soup.find_all('div', type='section'):
-            pt['osisID'] = '- ' + pt.title.text
+            pt['osisID'] = self.fix_osis_id('- ' + pt.title.text)
 
 
     def post_process(self):
