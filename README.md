@@ -60,7 +60,7 @@ Known issues
 TODO
 ----
   - In links, verse range end could be checked too.
-  - Backreferences from comments to articles
+  - Backreferences from comments to other resources (i.e. if verse is mentioned in article/etc., it is linked)
   - Write manually some TOCs in genbook
 
 CHANGES
