@@ -10,6 +10,8 @@ logger = logging.getLogger('study2osis')
 from .bible_data import LAST_CHAPTERS, CHAPTER_LAST_VERSES
 from .bibleref import verses, references_to_string, expand_ranges, Ref
 
+LINK_MAX_LENGTH = 38
+
 def find_subranges(orig_verses, actual_verses):
     ranges = []
     r = []
@@ -73,7 +75,7 @@ class FixOverlappingVersesMixin(object):
             links.append(link_item)
             is_fig = False
             is_tab = False
-            length = 34 # trying to keep lenght pretty short so that mobile phones would show only one line/link
+            length = LINK_MAX_LENGTH # trying to keep lenght pretty short so that mobile phones would show only one line/link
             if link_target_comment.find('figure'):
                 length -= 3
                 is_fig = True
