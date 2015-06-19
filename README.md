@@ -42,7 +42,7 @@ Quality
  - All resources included: studynotes, charts, figures, articles etc
  - Articles and resources as a general book module (--sword will pack them in single zip file)
  - Convenient links are added from comments to larger-range comments
- - Tested with AndBible & Xiphos -- software is  BETA because of limited testing
+ - Tested with AndBible & Xiphos -- software is  BETA because of limited testing and due to many issues listed below
 
 Known issues
 ------------
@@ -54,6 +54,8 @@ Known issues
  - AndBible shows General book contents as a one big list instead of a tree
  - Xiphos does not show emphasised text
  - Xiphos displays <q> as another paragraph (Heb.1)
+ - Not Xiphos, nor AndBible obey DisplayLevel option. Only Bibletime seems to obey it
+ - Bibletime issues: paragraphs not displayed, genbook links cause crash, images are not scaled
 
 TODO
 ----
