@@ -189,7 +189,7 @@ class Study2Osis(FixOverlappingVersesMixin, HTML2OsisMixin):
         os.mkdir(articles_final)
         image_path = os.path.join(module_final, 'images')
         os.mkdir(image_path)
-        for i in self.images + self.articles.images:
+        for i in set(self.images + self.articles.images):
             if epub_zip:
                 image_fname_in_zip = '/'.join(IMAGE_DIRECTORY + [i])
                 image_fname_in_fs = os.path.join(image_path, i)
@@ -199,33 +199,26 @@ class Study2Osis(FixOverlappingVersesMixin, HTML2OsisMixin):
                 shutil.copyfile(os.path.join(*([input_dir]+IMAGE_DIRECTORY+[i])), os.path.join(image_path, i))
         # bible conf
         conf_filename = os.path.join('mods.d', self.options.work_id.lower()+'.conf')
-        if os.path.exists(os.path.join('module_dir', conf_filename)):
-            shutil.copy(os.path.join('module_dir', conf_filename), os.path.join(module_dir, conf_filename))
-        else:
-            f = codecs.open(os.path.join(module_dir, conf_filename), 'w', 'utf-8')
-            conf_str = jinja2.Template(codecs.open(BIBLE_CONF_TEMPLATE, 'r', 'utf-8').read()).render(
-                                                                    work_id=self.options.work_id,
-                                                                    filename=input_dir,
-                                                                    title=self.options.title,
-                                                                    revision=__version__,
-                                                                    )
+        conf_str = jinja2.Template(codecs.open(BIBLE_CONF_TEMPLATE, 'r', 'utf-8').read()).render(
+                                                                work_id=self.options.work_id,
+                                                                filename=input_dir,
+                                                                title=self.options.title,
+                                                                revision=__version__,
+                                                                )
+
+        with codecs.open(os.path.join(module_dir, conf_filename), 'w', 'utf-8') as f:
             f.write(conf_str)
-            f.close()
 
         # articles conf
         conf_filename = os.path.join('mods.d', self.options.work_id.lower()+'_articles.conf')
-        if os.path.exists(os.path.join('module_dir', conf_filename)):
-            shutil.copy(os.path.join('module_dir', conf_filename), os.path.join(module_dir, conf_filename))
-        else:
-            f = codecs.open(os.path.join(module_dir, conf_filename), 'w', 'utf-8')
-            conf_str = jinja2.Template(codecs.open(GENBOOK_CONF_TEMPLATE, 'r', 'utf-8').read()).render(
-                                                                    work_id=self.options.work_id,
-                                                                    filename=input_dir,
-                                                                    title=self.options.title,
-                                                                    revision=__version__,
-                                                                    )
+        conf_str = jinja2.Template(codecs.open(GENBOOK_CONF_TEMPLATE, 'r', 'utf-8').read()).render(
+                                                                work_id=self.options.work_id,
+                                                                filename=input_dir,
+                                                                title=self.options.title,
+                                                                revision=__version__,
+                                                                )
+        with codecs.open(os.path.join(module_dir, conf_filename), 'w', 'utf-8') as f:
             f.write(conf_str)
-            f.close()
 
         process = subprocess.Popen(['osis2mod', module_final, bible_osis_filename, '-v', 'NRSV', '-z', '-b', '3'], stdout=subprocess.PIPE)
         process.communicate()
@@ -462,6 +455,8 @@ class Articles2Osis(HTML2OsisMixin):
 
         for p in self.root_soup.find_all('div', type='paragraph'):
             p.name = 'p'
+            del p.attrs['type']
+
         for pt in self.root_soup.find_all('div', class_='passagetitle'):
             pt.unwrap()
         for pt in self.root_soup.find_all('div'):
