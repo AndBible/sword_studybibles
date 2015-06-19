@@ -166,7 +166,7 @@ class HTML2OsisMixin(object):
         # replace italic strings
         for s in input_soup.find_all('em'):
             s.name = 'hi'
-            s['type'] = 'emphasis'
+            s['type'] = 'bold'
 
         # replace smallcaps
         for cls in ['smallcap', 'small-caps', 'divine-name']:
@@ -197,7 +197,7 @@ class HTML2OsisMixin(object):
                 s['type'] = 'bold'
             elif cls in ['profile-lead', 'facts-lead']:
                 s.name = 'hi'
-                s['type'] = 'emphasis'
+                s['type'] = 'bold'
             elif cls in ['good-king', 'mixture-king', 'bad-king', 'normal', 'smaller',
                          'hebrew', 'paleo-hebrew-unicode', 'major-prophet', 'minor-prophet',
                          'footnote', 'crossref', 'contributor-country', 'time', None]:
