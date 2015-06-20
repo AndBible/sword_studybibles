@@ -53,7 +53,7 @@ Known issues
  - AndBible does not resize images
  - AndBible shows General book contents as a one big list instead of a tree
  - Xiphos does not show emphasised text
- - Xiphos displays <q> as another paragraph (Heb.1)
+ - Xiphos displays ```<q>``` as another paragraph (Heb.1)
  - Not Xiphos, nor AndBible obey DisplayLevel option. Only Bibletime seems to obey it
  - Bibletime issues: paragraphs not displayed, genbook links cause crash, images are not scaled
 
