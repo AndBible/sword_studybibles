@@ -47,7 +47,7 @@ Quality
 Known issues
 ------------
  - By default verse linking is hard-wired to ESVS module. This is to workaround with Andbible
-   <reference> rendering bug (or feature - this is still to be disputed).
+  ``` <reference>``` rendering bug (or feature - this is still to be disputed).
    You may use --bible_work_id None if you wish not to use ESVS as your bible.
  - AndBible: links to articles/resources in genbook do not work
  - AndBible does not resize images
