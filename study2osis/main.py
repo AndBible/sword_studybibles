@@ -4,12 +4,13 @@
     See LICENCE.txt
 """
 import os, zipfile, tempfile, codecs, shutil, subprocess, logging, itertools, time
+import re
 
 from bs4 import BeautifulSoup
 import jinja2
 
 from .html2osis import HTML2OsisMixin
-from .overlapping import FixOverlappingVersesMixin
+from .overlapping import FixOverlappingVersesMixin, sort_tag_content
 from .bible_data import BOOKREFS, TAGS_BOOK
 
 HTML_DIRECTORY = ['OEBPS', 'Text']
@@ -113,6 +114,18 @@ class Study2Osis(FixOverlappingVersesMixin, HTML2OsisMixin):
                 r.replace_with('[%s]' % r.text)
                 logger.error('link not found %s', r['origRef'])
 
+    def _clean_tags(self, osis):
+        """
+            Finally remove all temporary/illegal attributes
+        """
+        attrs = set()
+        for t in osis.find_all():
+            for a in t.attrs.keys():
+                if a not in ['osisID', 'type', 'src', 'role', 'osisRef', 'osisWork', 'href', 'annotateRef', 'annotateType']:
+                    attrs.add(a)
+                    del t[a]
+        logger.info('Removed attributes: %s', ', '.join(attrs))
+
     def process_epub(self, epub_filename, output_filename=None, assume_zip=False):
         time_start = time.time()
         if not zipfile.is_zipfile(epub_filename):
@@ -142,6 +155,12 @@ class Study2Osis(FixOverlappingVersesMixin, HTML2OsisMixin):
         self.articles.collect_linkmap(self.link_map)
         self.articles.post_process()
         self._fix_postponed_references()
+        for i in self.articles.osistext.find_all(unwrap=True):
+            i.unwrap()
+
+        logger.info('Cleaning up illegal/temporary attributes')
+        self._clean_tags(self.osistext)
+        self._clean_tags(self.articles.osistext)
 
         if self.options.sword:
             self.make_sword_module(epub_zip, output_filename, epub_filename)
@@ -267,9 +286,9 @@ class Articles2Osis(HTML2OsisMixin):
 
     def fix_osis_id(self, osisid):
         """Remove illegal characters from osisIDs"""
-        for i in u':();—/.,[]{} ':
-            osisid = osisid.replace(i, '_').strip()
-        return osisid
+        osisid = re.sub(r'[^\w_]', '_', osisid)
+        osisid = re.sub(r'__+', '_', osisid)
+        return osisid.strip('_')
 
     def collect_linkmap(self, link_map):
         """
@@ -304,7 +323,7 @@ class Articles2Osis(HTML2OsisMixin):
         target = target_tag['osisID']
         for t in target_tag.parents:
             if 'osisID' in t.attrs:
-                target = '%s/%s' % (t['osisID'], target)
+                target = '%s.%s' % (t['osisID'], target)
 
         return '%s:%s' % (self.options.work_id + '_articles', target)
 
@@ -440,7 +459,7 @@ class Articles2Osis(HTML2OsisMixin):
             root_list.append(item)
             l = self.generate_toc(n)
             if l:
-                root_list.append(l)
+                item.append(l)
         if root_list.contents:
             return root_list
 
@@ -470,7 +489,7 @@ class Articles2Osis(HTML2OsisMixin):
             if 'type' not in pt.attrs:
                 pt.unwrap()
 
-        self.other.contents.sort(key=lambda x: x.attrs.get('osisID', ''))
+        sort_tag_content(self.other, key=lambda x: x.attrs.get('osisID', ''))
 
         for d in self.osistext.find_all('div', osisID=True):
             children = d.find_all('div', osisID=True, recursive=False)
@@ -482,7 +501,6 @@ class Articles2Osis(HTML2OsisMixin):
                     p.title.string = 'Table of contents'
                     p.append(root_list)
                     d.find('div', osisID=True).insert_before(p)
-
 
     def write(self, output_filename):
         logger.info('Writing articles into OSIS file %s', output_filename)
@@ -496,6 +514,3 @@ class Articles2Osis(HTML2OsisMixin):
     def _give_soup(self, fname):
         input_data = self.zip.read(fname)
         return BeautifulSoup(input_data, 'xml')
-
-
-

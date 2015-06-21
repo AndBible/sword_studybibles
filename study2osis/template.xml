@@ -8,7 +8,6 @@
           <title>{{title}}</title>
           <identifier type="OSIS">{{work_id}}</identifier>
           <refSystem>Bible.NRSV</refSystem>
-          <language>en</language>
      </work>
 </header>
 </osisText>

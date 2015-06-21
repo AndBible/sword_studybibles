@@ -126,89 +126,101 @@ class HTML2OsisMixin(object):
                 del a['onclick']
 
     def _fix_text_tags(self, input_soup):
-        for s in input_soup.find_all('small'):
-            # remove BOOK - NOTE ON XXX from studynotes
-            if 'NOTE ON' in s.text:
-                s.extract()
-            elif 'online at' in s.text or 'ESV' == s.text:
-                s['unwrap'] = '1'
-            elif s.text in ['A.D.', 'B.C.', 'A.M.', 'P.M.', 'KJV']:
-                s.replace_with(s.text)
-            else:
-                s.replace_with(s.text)
-                logger.error('still some unhandled small %s', s)
 
         self._fix_bibleref_links(input_soup)
 
-        # replace bolded strings
-        for s in input_soup.find_all('strong'):
-            s.name = 'hi'
-            s['type'] = 'bold'
+        for s in input_soup.find_all():
+            if s.name == 'small':
+                # remove BOOK - NOTE ON XXX from studynotes
+                if 'NOTE ON' in s.text:
+                    s.extract()
+                elif 'online at' in s.text or 'ESV' == s.text:
+                    s['unwrap'] = '1'
+                elif s.text in ['A.D.', 'B.C.', 'A.M.', 'P.M.', 'KJV']:
+                    s.replace_with(s.text)
+                else:
+                    s.replace_with(s.text)
+                    logger.error('still some unhandled small %s', s)
 
-        for s in input_soup.find_all('h4'):
-            s.name = 'div'
-            s['type'] = 'paragraph'
 
-        for i in input_soup.find_all('ol'):
-            i.name = 'list'
-
-        for i in input_soup.find_all('blockquote'):
-            i['unwrap'] = '1'
-
-        for i in input_soup.find_all('li'):
-            i.name = 'item'
-
-        # replace italic strings
-        for s in input_soup.find_all('i'):
-            s.name = 'hi'
-            s['type'] = 'italic'
-
-        # replace italic strings
-        for s in input_soup.find_all('em'):
-            s.name = 'hi'
-            s['type'] = 'bold'
-
-        # replace smallcaps
-        for cls in ['smallcap', 'small-caps', 'divine-name']:
-            for s in input_soup.find_all('span', class_=cls):
-                s.name = 'hi'
-                s['type'] = 'small-caps'
-
-        # find outline-1 ('title' studynote covering verse range)
-        # find outline-2 (bigger studynote title, verse range highlighted)
-        # find outline-3 (smaller studynote title, verse range not highlighted)
-        # find outline-4 (even smaller studynote title, verse range not highlighted)
-
-        for k in ['outline-%s' % i for i in xrange(1, 5)]:
-            for s in input_soup.find_all('span', class_=k):
+            # replace bolded strings
+            elif s.name == 'strong':
                 s.name = 'hi'
                 s['type'] = 'bold'
-                new_tag = self.root_soup.new_tag('hi', type='underline')
-                s.wrap(new_tag)
 
-        # find esv font definitions
-        for s in input_soup.find_all('span'):
-            cls = s.get('class', None)
-            if cls == 'bible-version':
-                assert s.text.lower() in ['esv', 'lxx', 'kjv', 'mt', 'nkjv', 'nasb'], s.text
-                s.replace_with(s.text.upper())
-            elif cls in ['h3-inline']:
+            elif s.name == 'sup':
                 s.name = 'hi'
-                s['type'] = 'bold'
-            elif cls in ['profile-lead', 'facts-lead']:
-                s.name = 'hi'
-                s['type'] = 'bold'
-            elif cls in ['good-king', 'mixture-king', 'bad-king', 'normal', 'smaller',
-                         'hebrew', 'paleo-hebrew-unicode', 'major-prophet', 'minor-prophet',
-                         'footnote', 'crossref', 'contributor-country', 'time', None]:
-                s['unwrap'] = '1'
-            elif cls in ['underline']:
-                s.name = 'hi'
-                s['type'] = 'underline'
-            else:
-                logger.warning('Span class not known %s, in %s', cls, s)
+                s['type'] = 'super'
+
+            elif s.name in ['h4', 'h5']:
+                logger.warning('h4 or h5 tag used: %s', s)
+                s.name = 'title'
+            #    s.name = 'div'
+            #    s['type'] = 'paragraph'
+
+            elif s.name in ['ol', 'ul']:
+                s.name = 'list'
+
+            elif s.name == 'br':
+                s.name = 'lb'
+
+            # some tags that can be completely unwrapped
+            elif s.name in ['blockquote', 'cite', 'hr', 'colgroup', 'col']:
                 s['unwrap'] = '1'
 
+            elif s.name == 'li':
+                s.name = 'item'
+
+            # replace italic strings
+            elif s.name == 'i':
+                s.name = 'hi'
+                s['type'] = 'italic'
+
+            # replace italic strings
+            elif s.name == 'em':
+                s.name = 'hi'
+                s['type'] = 'bold'
+
+            # replace smallcaps
+            elif s.name == 'span':
+                cls = s.attrs.get('class')
+                if cls in ['smallcap', 'small-caps', 'divine-name']:
+                    s.name = 'hi'
+                    s['type'] = 'small-caps'
+
+                # find outline-1 ('title' studynote covering verse range)
+                # find outline-2 (bigger studynote title, verse range highlighted)
+                # find outline-3 (smaller studynote title, verse range not highlighted)
+                # find outline-4 (even smaller studynote title, verse range not highlighted)
+
+                elif cls in ['outline-%s' % i for i in xrange(1, 5)]:
+                    s.name = 'hi'
+                    s['type'] = 'bold'
+                    new_tag = self.root_soup.new_tag('hi', type='underline')
+                    s.wrap(new_tag)
+
+                # find esv font definitions
+                elif cls == 'bible-version':
+                    assert s.text.lower() in ['esv', 'lxx', 'kjv', 'mt', 'nkjv', 'nasb'], s.text
+                    s.replace_with(s.text.upper())
+                elif cls in ['h3-inline']:
+                    s.name = 'hi'
+                    s['type'] = 'bold'
+                elif cls in ['profile-lead', 'facts-lead']:
+                    s.name = 'hi'
+                    s['type'] = 'bold'
+                elif cls in ['good-king', 'mixture-king', 'bad-king', 'normal', 'smaller',
+                             'hebrew', 'paleo-hebrew-unicode', 'major-prophet', 'minor-prophet',
+                             'footnote', 'crossref', 'contributor-country', 'time', None]:
+                    s['unwrap'] = '1'
+                elif cls in ['underline']:
+                    s.name = 'hi'
+                    s['type'] = 'underline'
+                else:
+                    logger.warning('Span class not known %s, in %s', cls, s)
+                    s['unwrap'] = '1'
+
+        # find all hi's without content and remove them
         for s in input_soup.find_all('hi'):
             if len(s) == 0:
                 s.extract()
@@ -229,7 +241,7 @@ class HTML2OsisMixin(object):
             p.name = 'div'
             p['type'] = 'paragraph'
 
-    def _fix_figure(self, img_div):
+    def _fix_figure_and_table(self, img_div):
         self._fix_table(img_div)
         for img in img_div.find_all('img'):
             img.name = 'figure'
@@ -243,8 +255,8 @@ class HTML2OsisMixin(object):
 
     def _all_fixes(self, soup):
         self._fix_text_tags(soup)
-        self._fix_figure(soup)
-        self._fix_table(soup)
+        self._fix_figure_and_table(soup)
+        #self._fix_table(soup)
 
     def _adjust_studynotes(self, body):
         for rootlevel_tag in body.children:
@@ -252,20 +264,20 @@ class HTML2OsisMixin(object):
                 continue
             elif rootlevel_tag.name == 'div':
                 cls = rootlevel_tag['class']
-                if cls == 'object chart':
-                    self._fix_table(rootlevel_tag)
+                if cls == 'object chart': # usually table
+                    self._fix_figure_and_table(rootlevel_tag)
                 elif cls == 'object map':
-                    self._fix_figure(rootlevel_tag)
+                    self._fix_figure_and_table(rootlevel_tag)
                 elif cls == 'object illustration':
-                    self._fix_figure(rootlevel_tag)
+                    self._fix_figure_and_table(rootlevel_tag)
                 elif cls == 'object diagram':
-                    self._fix_figure(rootlevel_tag)
+                    self._fix_figure_and_table(rootlevel_tag)
                 elif cls == 'fact':
                     self._fix_fact(rootlevel_tag)
                 elif cls == 'profile':
                     self._fix_fact(rootlevel_tag)
-                elif cls == 'object info':
-                    self._fix_table(rootlevel_tag)
+                elif cls == 'object info': #table
+                    self._fix_figure_and_table(rootlevel_tag)
                 else:
                     logger.error('Unknown div class %s', cls)
             elif rootlevel_tag.name == 'p':

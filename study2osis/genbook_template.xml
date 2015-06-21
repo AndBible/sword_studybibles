@@ -9,7 +9,6 @@
           <creator role="aut">{{author}}</creator>
           <identifier type="OSIS">{{work_id}}</identifier>
           <refSystem>Bible.NRSV</refSystem>
-          <language>en</language>
      </work>
 </header>
 </osisText>

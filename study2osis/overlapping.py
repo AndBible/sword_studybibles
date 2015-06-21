@@ -26,6 +26,13 @@ def find_subranges(orig_verses, actual_verses):
         ranges.append(r)
     return ranges
 
+def sort_tag_content(soup, key):
+    new_contents = [ i.extract() for i in soup.contents ]
+    new_contents.sort(key=key)
+    for i in new_contents:
+        soup.append(i)
+
+
 class FixOverlappingVersesMixin(object):
     """
     Provides fix_overlapping_ranges() function and it's helpers to Study2Osis class
@@ -223,7 +230,7 @@ class FixOverlappingVersesMixin(object):
     def _sort_links(self):
         # Sort links
         for ref_links_list in self.osistext.find_all('list', cls='reference_links'):
-            ref_links_list.contents.sort(key=lambda x: Ref(x.reference['osisRef'].split(':')[1]))
+            sort_tag_content(ref_links_list, lambda x: Ref(x.reference['osisRef'].split(':')[1]))
 
     def _create_empty_comment(self, verse):
         if isinstance(verse, (list, set)):
