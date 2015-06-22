@@ -1,3 +1,3 @@
 __version__ = 5
 
-from .main import Study2Osis
+from .main import Commentary

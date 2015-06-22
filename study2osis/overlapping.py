@@ -4,6 +4,7 @@
 """
 from copy import copy
 import logging
+import re
 
 logger = logging.getLogger('study2osis')
 
@@ -152,7 +153,7 @@ class FixOverlappingVersesMixin(object):
             vs = verses(expand_ranges(comment['annotateRef']))
 
             # make figures and tables linked to some larger range: rest of this chapter as well as whole next chapter
-            if comment.find('figure') or comment.find('table'):
+            if comment.find(re.compile('(figure|table)')):
                 first = vs[0]
                 last = Ref('%s.%s.%s'%(v.book, min(v.chapter+1, LAST_CHAPTERS[v.book]),
                                       CHAPTER_LAST_VERSES['%s.%s'%(first.book, first.chapter)]))

@@ -7,7 +7,7 @@
 """
 
 import optparse, zipfile
-from study2osis.main import Articles2Osis
+from study2osis.main import Articles
 from ipdb import launch_ipdb_on_exception
 import logging
 logging.basicConfig(level=logging.INFO)
@@ -33,9 +33,9 @@ if __name__ == '__main__':
     if len(args) == 1:
         input_dir = args[0]
         with launch_ipdb_on_exception():
-            o = Articles2Osis(options)
+            o = Articles(options)
             epub_zip = zipfile.ZipFile(input_dir)
-            o.read_intros_and_articles(epub_zip)
+            o.read_resources(epub_zip)
             o.write(input_dir.rsplit('.',1)[0] + '.xml')
     else:
         parser.print_help()

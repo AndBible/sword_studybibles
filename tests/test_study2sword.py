@@ -5,7 +5,7 @@
 from study2osis.html2osis import parse_studybible_reference
 from study2osis.overlapping import find_subranges
 
-from study2osis.main import Study2Osis, Articles2Osis
+from study2osis.main import Commentary, Articles
 from study2osis.bibleref import Ref, expand_ranges, first_reference, last_reference, xrefrange, refrange
 from bs4 import BeautifulSoup
 
@@ -40,7 +40,7 @@ def test_overlapping_1():
         </osisText>
     """, 'xml')
 
-    s = Study2Osis(options)
+    s = Commentary(options)
     s.root_soup = osistext
     s.osistext = osistext.find('osisText')
     s.fix_overlapping_ranges()
@@ -61,7 +61,7 @@ def test_merge_comments():
         </osisText>
     """, 'xml')
 
-    s = Study2Osis(options)
+    s = Commentary(options)
     s.root_soup = osistext
     s.osistext = osistext.find('osisText')
     s.fix_overlapping_ranges()
@@ -83,7 +83,7 @@ def test_commentless_verse_within_rangecomment():
     """, 'xml')
     # here, we want to create empty comment in verse 3 and add link there (instead of linking to verse 1).
 
-    s = Study2Osis(options)
+    s = Commentary(options)
     s.root_soup = osistext
     s.osistext = osistext.find('osisText')
     s.fix_overlapping_ranges()
@@ -104,7 +104,7 @@ def test_adjacent_verses():
         </osisText>
     """, 'xml')
 
-    s = Study2Osis(options)
+    s = Commentary(options)
     s.root_soup = osistext
     s.osistext = osistext.find('osisText')
     s.fix_overlapping_ranges()
@@ -129,7 +129,7 @@ def test_genbook():
         </body>
     """, 'xml')
 
-    s = Articles2Osis(options)
+    s = Articles(options)
     #s.root_soup = s.osistext = osistext
     s._process_html_body(osistext.find('body'), 'fname')
     result = unicode(s.root_soup) #.prettify()
@@ -150,7 +150,7 @@ def test_genbook2():
         </body>
     """, 'xml')
 
-    s = Articles2Osis(options)
+    s = Articles(options)
     #s.root_soup = s.osistext = osistext
     s._process_html_body(osistext.find('body'), 'fname')
     result = unicode(s.root_soup) #.prettify()

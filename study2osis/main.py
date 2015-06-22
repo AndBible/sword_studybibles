@@ -46,7 +46,7 @@ def dict_to_options(opts):
 
     return Options
 
-class Study2Osis(FixOverlappingVersesMixin, HTML2OsisMixin):
+class Commentary(FixOverlappingVersesMixin, HTML2OsisMixin):
     """
     Study bible commentary text to SWORD module conversion class
 
@@ -147,12 +147,15 @@ class Study2Osis(FixOverlappingVersesMixin, HTML2OsisMixin):
             self.current_filename = fn
             self._read_studynotes_file(data_in)
 
+
+        self.articles = Articles(self.options, self.osistext)
+        self.articles.read_resources(epub_zip)
+
         self.fix_overlapping_ranges()
         self._collect_linkmap()
         for i in self.osistext.find_all(unwrap=True):
             i.unwrap()
-        self.articles = Articles2Osis(self.options)
-        self.articles.read_intros_and_articles(epub_zip)
+
         self.articles.collect_linkmap(self.link_map)
         self.articles.post_process()
         self._fix_postponed_references()
@@ -167,6 +170,7 @@ class Study2Osis(FixOverlappingVersesMixin, HTML2OsisMixin):
             self.make_sword_module(epub_zip, output_filename, epub_filename)
 
         else:
+            self.make_sword_module(epub_zip, output_filename, epub_filename)
             output_filename = output_filename or '%s.xml' % epub_filename.rsplit('.')[0]
             self.write_osis_file(output_filename)
             self.articles.write('articles_'+output_filename)
@@ -260,14 +264,15 @@ class Study2Osis(FixOverlappingVersesMixin, HTML2OsisMixin):
         shutil.rmtree(module_dir)
         logger.info('Sword module written in %s', zip_filename)
 
-class Articles2Osis(HTML2OsisMixin):
+class Articles(HTML2OsisMixin):
     """
         Write articles & book introdcutions as a SWORD genbook
     """
-    def __init__(self, options):
+    def __init__(self, options, commentary):
         if isinstance(options, dict):
             options = dict_to_options(options)
         self.options = options
+        self.commentary = commentary
         self.current_filename = ''
         self.images = []
         self.used_resources = []
@@ -284,6 +289,9 @@ class Articles2Osis(HTML2OsisMixin):
         self.osistext.append(self.articles)
         self.osistext.append(self.other)
         self.path = HTML_DIRECTORY[0]
+
+    class TitleNotFound(Exception):
+        pass
 
     def fix_osis_id(self, osisid):
         """Remove illegal characters from osisIDs"""
@@ -358,39 +366,72 @@ class Articles2Osis(HTML2OsisMixin):
         for i in soup.find_all('div', type='section'):
             self._fix_section_one_level(i, 'h3', 'subSection')
 
-    def _process_html_body(self, soup, fname):
-        if fname.endswith('resources.xhtml') and len(soup.find_all('h1')) > 1:
-            logger.error('More than 1 h1 header in a file %s!', fname)
-        titletag = soup.find('h1')
+    def _find_title(self, soup):
+        titletag = soup.find(re.compile('^(h1|h2|h3)$'))
         if not titletag:
-            titletag = soup.find('h2')
-        if not titletag:
-            titletag = soup.find('h3')
-        if not titletag:
-            logger.error('No title in %s, skipping.', fname)
-            return False
-
+            raise self.TitleNotFound
         title = titletag.text.strip(' \n')
+        return titletag, title
 
-        # Manually one inconsistency in ESV Study Bible (should does not affect other works)
-        if title in [u'Ezra—History of Salvation in the Old Testament', u'Song of Solomon—History of Salvation in the Old Testament']:
-            target = self.articles.find(osisID=self.fix_osis_id('History of Salvation in the Old Testament  Preparing the Way for Christ'))
+    def _move_to_studynote(self, tag, target_ref):
+        """
+            To fix properly also links, this should be run actually *before* doing final fixes to studynotes
+        """
+        tag = tag.extract()
+        self._all_fixes(tag)
+        studynote = self.commentary.find('div', annotateRef=re.compile('^%s'%target_ref))
+        tag['type'] = 'paragraph'
+        studynote.append(tag)
+        logger.info('Moved %s to %s', tag.title.text, target_ref)
+
+    def _manual_fixes(self, soup):
+        """
+            Manually some inconsistencies in ESV Study Bible (should does not affect other works)
+        """
+
+        # TODO: first check if this is really ESV Study Bible!
+
+        if not self.current_filename.endswith('intros.xhtml'):
+            return True
+
+        titletag, title = self._find_title(soup)
+        if title == 'The Battle at Mount Gilboa':
+            self._move_to_studynote(titletag.parent, '1Sam.31.1')
+        elif title == 'The Deity of Jesus Christ in 2 Peter':
+            self._move_to_studynote(titletag.parent, '2Pet.3.1')
+        elif title in [u'Ezra—History of Salvation in the Old Testament',
+                       u'Song of Solomon—History of Salvation in the Old Testament']:
+            target = self.articles.find(osisID=self.fix_osis_id('History of Salvation in the Old Testament'
+                                                                '  Preparing the Way for Christ'))
             self._fix_sections(soup)
             self._all_fixes(soup)
             for i in soup.children:
                 target.append(i)
             return False
+        return True
+
+    def _process_html_body(self, soup):
+        if self.current_filename.endswith('resources.xhtml') and len(soup.find_all('h1')) > 1:
+            logger.error('More than 1 h1 header in a file %s!', self.current_filename)
+
+        try:
+            if not self._manual_fixes(soup):
+                return False
+
+            titletag, title = self._find_title(soup)
+        except self.TitleNotFound:
+            logger.error('No title in %s, skipping.', self.current_filename)
+            return False
 
         titletag.name = 'title'
         titletag['origFile'] = self.current_filename
-        titletag.string = title #'* %s *' % title
+        titletag.string = title
         self._fix_sections(soup)
         self._all_fixes(soup)
         soup.name = 'div'
         soup['type'] = 'chapter'
         soup['osisID'] = self.fix_osis_id(title)
-        soup['origFile'] = fname
-        #self.articles.append(soup)
+        soup['origFile'] = self.current_filename
         return True
 
 
@@ -401,10 +442,10 @@ class Articles2Osis(HTML2OsisMixin):
                 self.used_resources.append(fname.split(os.path.sep)[-1])
                 self.current_filename = fname
                 soup = self._give_soup(os.path.join(self.path, fname)).find('body')
-                self._process_html_body(soup, fname)
+                self._process_html_body(soup)
                 self.articles.append(soup)
 
-    def read_intros_and_articles(self, epub_zip):
+    def read_resources(self, epub_zip):
         self.zip = epub_zip
 
         logger.info('Reading articles')
@@ -420,7 +461,7 @@ class Articles2Osis(HTML2OsisMixin):
             logger.debug('Reading intros %s', f)
             self.current_filename = f
             bs = self._give_soup(f).find('body')
-            if not self._process_html_body(bs, f):
+            if not self._process_html_body(bs):
                 continue
             for h1 in bs.find_all('h1'):
                 h1.extract()
@@ -433,13 +474,14 @@ class Articles2Osis(HTML2OsisMixin):
         for f in resource_files:
             self.current_filename = f
             bs = self._give_soup(f).find('body')
-            if not self._process_html_body(bs, f):
+            if not self._process_html_body(bs):
                 continue
             for h1 in bs.find_all('h1'):
                 h1.extract()
             self.other.append(bs)
 
         # do not split sections in short articles
+        # TODO: make optional
         for c in self.root_soup.find_all('div', type='chapter'):
             if len(c.text) < 20000:
                 for pt in c.find_all('div', type='section'):
@@ -449,7 +491,9 @@ class Articles2Osis(HTML2OsisMixin):
             pt['osisID'] = self.fix_osis_id(pt.title.text)
             #pt['osisID'] = '- ' + self.fix_osis_id(pt.title.text)
 
-    def generate_toc(self, node):
+    def generate_toc(self, node, depth):
+        if not depth:
+            return
         root_list = self.root_soup.new_tag('list')
         for n in node.find_all('div', osisID=True, recursive=False):
             item = self.root_soup.new_tag('item')
@@ -458,7 +502,7 @@ class Articles2Osis(HTML2OsisMixin):
             title_tag = n.find('title', recursive=False)
             item.reference.string = title_tag.text if title_tag else n['osisID']
             root_list.append(item)
-            l = self.generate_toc(n)
+            l = self.generate_toc(n, depth-1)
             if l:
                 item.append(l)
         if root_list.contents:
@@ -495,14 +539,14 @@ class Articles2Osis(HTML2OsisMixin):
         full_toc = self.root_soup.new_tag('div', type='book', osisID=self.fix_osis_id('Full Table of Contents'))
         full_toc.append(self.root_soup.new_tag('title'))
         full_toc.title.string = 'Full table of contents'
-        full_toc.append(self.generate_toc(self.osistext))
+        full_toc.append(self.generate_toc(self.osistext, 2))
         self.osistext.insert(0, full_toc)
 
 
         for d in self.osistext.find_all('div', osisID=True):
             children = d.find_all('div', osisID=True, recursive=False)
             if children:
-                root_list = self.generate_toc(d)
+                root_list = self.generate_toc(d, 2)
                 if root_list:
                     p = self.root_soup.new_tag('p')
                     p.append(self.root_soup.new_tag('title'))
