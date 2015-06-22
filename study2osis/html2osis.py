@@ -256,35 +256,36 @@ class HTML2OsisMixin(object):
     def _all_fixes(self, soup):
         self._fix_text_tags(soup)
         self._fix_figure_and_table(soup)
-        #self._fix_table(soup)
 
-    def _adjust_studynotes(self, body):
-        for rootlevel_tag in body.children:
+    def _adjust_studynotes(self):
+        for rootlevel_tag in self.osistext.find_all(recursive=False, origFile=True):
+            self.current_filename = rootlevel_tag['origFile']
+            move_to_first_verse = False
             if rootlevel_tag.name in ['h1', 'hr']:
+                rootlevel_tag['wrap'] = '1'
+            elif rootlevel_tag.name == 'header':
+                continue
+            elif isinstance(rootlevel_tag, NavigableString):
+                assert str(rootlevel_tag).strip() == ''
+                rootlevel_tag.extract()
                 continue
             elif rootlevel_tag.name == 'div':
                 cls = rootlevel_tag['class']
-                if cls == 'object chart': # usually table
+                if cls.startswith('object '):
+                    type = cls.split(' ')[1]
+                    if type not in ['chart', 'map', 'illustration', 'diagram', 'info']:
+                        logger.error('Unknown object type')
                     self._fix_figure_and_table(rootlevel_tag)
-                elif cls == 'object map':
-                    self._fix_figure_and_table(rootlevel_tag)
-                elif cls == 'object illustration':
-                    self._fix_figure_and_table(rootlevel_tag)
-                elif cls == 'object diagram':
-                    self._fix_figure_and_table(rootlevel_tag)
+                    move_to_first_verse = True
                 elif cls == 'fact':
                     self._fix_fact(rootlevel_tag)
                 elif cls == 'profile':
                     self._fix_fact(rootlevel_tag)
-                elif cls == 'object info': #table
-                    self._fix_figure_and_table(rootlevel_tag)
                 else:
                     logger.error('Unknown div class %s', cls)
             elif rootlevel_tag.name == 'p':
                 if rootlevel_tag['class'] not in ['outline-1', 'outline-3', 'outline-4', 'study-note-continue', 'study-note']:
                     logger.error('not handled %s', rootlevel_tag['class'])
-            elif isinstance(rootlevel_tag, NavigableString):
-                continue
             elif rootlevel_tag.name == 'table':
                 rootlevel_tag = rootlevel_tag.wrap(self.root_soup.new_tag('div', type='paragraph'))
                 self._fix_table(rootlevel_tag)
@@ -302,51 +303,37 @@ class HTML2OsisMixin(object):
                     ref = parse_studybible_reference(rootlevel_tag['id'])
                 except IllegalReference:
                     logger.error('NOT writing %s', rootlevel_tag)
+                    rootlevel_tag.extract()
                     continue
 
                 del rootlevel_tag['id']
 
-                new_div = self.root_soup.new_tag('studynote')
+                new_div = self.root_soup.new_tag('div')
                 new_div['type'] = 'section'
                 new_div['annotateType'] = 'commentary'
                 new_div['annotateRef'] = ref
 
                 rootlevel_tag.wrap(new_div)
             else:
-                previous = rootlevel_tag.find_previous('studynote')
+                if move_to_first_verse:
+                    now = previous = rootlevel_tag.find_previous_sibling('div', annotateType='commentary')
+                    r = Ref(first_reference(previous['annotateRef']))
+                    chapter = r.chapter
+                    # find earliest studynote that is in this same chapter and add figure / table there
+                    while r.chapter == chapter:
+                        now = previous
+                        previous = previous.find_previous_sibling('div', annotateType='commentary')
+                        r = Ref(first_reference(previous['annotateRef']))
+                    previous = now
+#
+                else:
+                    previous = rootlevel_tag.find_previous_sibling('div', annotateType='commentary')
+#                previous = rootlevel_tag.find_previous_sibling('div', annotateType='commentary')
                 rootlevel_tag.extract()
                 previous.append(rootlevel_tag)
 
     def _write_studynotes_into_osis(self, input_html):
-        tag_level = self.options.tag_level
-        osistext = self.osistext
-        bookdivs = {}
-        chapdivs = {}
-        bookdiv, chapdiv, verdiv = None, None, None
         for n in input_html.find_all('studynote', recursive=False):
             n.name = 'div'
-            book, chap, ver = first_reference(n['annotateRef'])
-            chapref = '%s.%s' % (book, chap)
-            verref = '%s.%s.%s' % (book, chap, ver)
             n['origFile'] = self.current_filename
-
-            if tag_level >= TAGS_BOOK:
-                bookdiv = bookdivs.get(book)
-                if bookdiv is None:
-                    bookdiv = bookdivs[book] = self.root_soup.find('div', osisID=book)
-            if tag_level >= TAGS_CHAPTES:
-                chapdiv = chapdivs.get(chapref)
-                if chapdiv is None:
-                    chapdiv = bookdiv.find('chapter', osisID=chapref)
-                    if not chapdiv:
-                        chapdiv = self.root_soup.new_tag('chapter', osisID=chapref)
-                        bookdiv.append(chapdiv)
-                    chapdivs[chapref] = chapdiv
-            if tag_level >= TAGS_VERSES:
-                verdiv = chapdiv.find('verse', osisID=verref)
-                if not verdiv:
-                    verdiv = self.root_soup.new_tag('verse', osisID=verref)
-                    chapdiv.append(verdiv)
-
-            [osistext, bookdiv, chapdiv, verdiv][tag_level].append(n)
-
+            self.osistext.append(n)

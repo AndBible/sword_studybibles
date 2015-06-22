@@ -109,20 +109,7 @@ class Commentary(AbstractStudybible, HTML2OsisMixin, FixOverlappingVersesMixin):
         template = jinja2.Template(open(COMMENTARY_TEMPLATE_XML).read())
         output_xml = BeautifulSoup(template.render(title=options.title, work_id=options.work_id), 'xml')
         self.root_soup = output_xml
-
-        self.osistext = osistext = output_xml.find('osisText')
-        if self.options.tag_level >= TAGS_BOOK:
-            ot = output_xml.new_tag('div', type='x-testament')
-            matt_ref = BOOKREFS.index('Matt')
-            for i in BOOKREFS[:matt_ref]:
-                book = output_xml.new_tag('div', type='book', osisID=i)
-                ot.append(book)
-            nt = output_xml.new_tag('div', type='x-testament')
-            for i in BOOKREFS[matt_ref:]:
-                book = output_xml.new_tag('div', type='book', osisID=i)
-                nt.append(book)
-            osistext.append(ot)
-            osistext.append(nt)
+        self.osistext = output_xml.find('osisText')
 
     def _get_full_ref(self, t):
         target = t.find_parent('div', annotateType='commentary')['annotateRef'].split(' ')[0]
@@ -152,10 +139,13 @@ class Commentary(AbstractStudybible, HTML2OsisMixin, FixOverlappingVersesMixin):
             data_in = epub_zip.read(fn)
             self.current_filename = fn
 
-            input_html = BeautifulSoup(data_in, 'xml')
-            body = input_html.find('body')
-            self._adjust_studynotes(body)
-            self._write_studynotes_into_osis(body)
+            body = BeautifulSoup(data_in, 'xml').find('body')
+            for i in body.find_all(recursive=False):
+                i['origFile'] = fn
+                self.osistext.append(i.extract())
+
+        self._adjust_studynotes()
+       #     self._write_studynotes_into_osis(body)
 
 
 class Articles(AbstractStudybible, HTML2OsisMixin):
@@ -212,7 +202,8 @@ class Articles(AbstractStudybible, HTML2OsisMixin):
             self.intros.append(bs)
 
         logger.info('Reading other resources')
-        resource_files = [i for i in epub_zip.namelist() if i.endswith('resources.xhtml') and i.split(os.path.sep)[-1] not in self.used_resources]
+        resource_files = [i for i in epub_zip.namelist() if i.endswith('resources.xhtml')
+                          and i.split(os.path.sep)[-1] not in self.used_resources]
         if self.options.debug:
             resource_files = resource_files[:2]
         for f in resource_files:

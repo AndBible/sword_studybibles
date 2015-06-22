@@ -28,7 +28,7 @@ def find_subranges(orig_verses, actual_verses):
     return ranges
 
 def sort_tag_content(soup, key):
-    new_contents = [ i.extract() for i in soup.contents ]
+    new_contents = [ i.extract() for i in soup.find_all(recursive=False) ]
     new_contents.sort(key=key)
     for i in new_contents:
         soup.append(i)
@@ -155,7 +155,7 @@ class FixOverlappingVersesMixin(object):
             # make figures and tables linked to some larger range: rest of this chapter as well as whole next chapter
             if comment.find(re.compile('(figure|table)')):
                 first = vs[0]
-                last = Ref('%s.%s.%s'%(v.book, min(v.chapter+1, LAST_CHAPTERS[v.book]),
+                last = Ref('%s.%s.%s'%(first.book, min(first.chapter+1, LAST_CHAPTERS[first.book]),
                                       CHAPTER_LAST_VERSES['%s.%s'%(first.book, first.chapter)]))
                 vs2 = verses(expand_ranges('%s-%s'%(first, last)))
                 vs = sorted(set(vs+vs2))
