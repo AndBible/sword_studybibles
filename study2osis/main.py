@@ -20,6 +20,7 @@ GENBOOK_CONF_TEMPLATE = os.path.join(__file__.rsplit(os.path.sep,1)[0], 'genbook
 
 COMMENTARY_TEMPLATE_XML = os.path.join(__file__.rsplit(os.path.sep,1)[0], 'template.xml')
 GENBOOK_TEMPLATE_XML = os.path.join(__file__.rsplit(os.path.sep,1)[0], 'genbook_template.xml')
+GENBOOK_BRANCH_SEPARATION_LETTER = '/'
 
 logger = logging.getLogger('study2osis')
 
@@ -323,7 +324,7 @@ class Articles2Osis(HTML2OsisMixin):
         target = target_tag['osisID']
         for t in target_tag.parents:
             if 'osisID' in t.attrs:
-                target = '%s.%s' % (t['osisID'], target)
+                target = '%s%s%s' % (t['osisID'], GENBOOK_BRANCH_SEPARATION_LETTER, target)
 
         return '%s:%s' % (self.options.work_id + '_articles', target)
 
