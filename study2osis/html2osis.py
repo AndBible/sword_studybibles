@@ -165,18 +165,18 @@ class HTML2OsisMixin(object):
                 s.name = 'lb'
 
             # some tags that can be completely unwrapped
-            elif s.name in ['blockquote', 'cite', 'hr', 'colgroup', 'col']:
+            elif s.name in ['blockquote', 'hr', 'colgroup', 'col']:
                 s['unwrap'] = '1'
 
             elif s.name == 'li':
                 s.name = 'item'
 
             # replace italic strings
-            elif s.name == 'i':
+            elif s.name in ['i', 'cite']:
                 s.name = 'hi'
                 s['type'] = 'italic'
 
-            # replace italic strings
+            # replace emphasized strings
             elif s.name == 'em':
                 s.name = 'hi'
                 s['type'] = 'bold'
