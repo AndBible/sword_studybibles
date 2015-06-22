@@ -5,7 +5,7 @@
 from study2osis.html2osis import parse_studybible_reference
 from study2osis.overlapping import find_subranges
 
-from study2osis.main import Commentary, Articles
+from study2osis.main import Convert, Articles
 from study2osis.bibleref import Ref, expand_ranges, first_reference, last_reference, xrefrange, refrange
 from bs4 import BeautifulSoup
 
@@ -40,7 +40,7 @@ def test_overlapping_1():
         </osisText>
     """, 'xml')
 
-    s = Commentary(options)
+    s = Convert(options)
     s.root_soup = osistext
     s.osistext = osistext.find('osisText')
     s.fix_overlapping_ranges()
@@ -61,7 +61,7 @@ def test_merge_comments():
         </osisText>
     """, 'xml')
 
-    s = Commentary(options)
+    s = Convert(options)
     s.root_soup = osistext
     s.osistext = osistext.find('osisText')
     s.fix_overlapping_ranges()
@@ -83,7 +83,7 @@ def test_commentless_verse_within_rangecomment():
     """, 'xml')
     # here, we want to create empty comment in verse 3 and add link there (instead of linking to verse 1).
 
-    s = Commentary(options)
+    s = Convert(options)
     s.root_soup = osistext
     s.osistext = osistext.find('osisText')
     s.fix_overlapping_ranges()
@@ -104,7 +104,7 @@ def test_adjacent_verses():
         </osisText>
     """, 'xml')
 
-    s = Commentary(options)
+    s = Convert(options)
     s.root_soup = osistext
     s.osistext = osistext.find('osisText')
     s.fix_overlapping_ranges()

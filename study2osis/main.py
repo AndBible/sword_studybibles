@@ -46,10 +46,51 @@ def dict_to_options(opts):
 
     return Options
 
-class Commentary(FixOverlappingVersesMixin, HTML2OsisMixin):
-    """
-    Study bible commentary text to SWORD module conversion class
+class AbstractStudybible(object):
+    def clean_tags(self):
+        """
+            Finally remove all temporary/illegal attributes
+        """
+        attrs = set()
+        for t in self.osistext.find_all():
+            for a in t.attrs.keys():
+                if a not in ['osisID', 'type', 'src', 'role', 'osisRef', 'osisWork', 'href', 'annotateRef', 'annotateType']:
+                    attrs.add(a)
+                    del t[a]
+        logger.info('Removed attributes: %s', ', '.join(attrs))
 
+    def fix_postponed_references(self, link_map):
+        """ Fix postponed reference links from the mapping collected in self.link_map"""
+        logger.info('Fixing postponed references')
+        for r in self.osistext.find_all('reference', postpone='1'):
+            if r['origRef'] in link_map:
+                r['osisRef'] = link_map[r['origRef']]
+                del r['postpone']
+            else:
+                r.replace_with('[%s]' % r.text)
+                logger.error('link not found %s', r['origRef'])
+
+    def collect_linkmap(self, linkmap):
+        """
+            Collect mapping from HTML ids to osisRefs
+        """
+        logger.info('Collecting linkmap from studynotes')
+        for t in self.osistext.find_all(id=True):
+            id = t['id']
+            if 'origFile' in t.attrs:
+                origfile = t['origFile']
+            else:
+                p = t.find_parent(origFile=True)
+                origfile = p['origFile']
+
+            origfile = origfile.split(os.path.sep)[-1]
+            origref = '%s#%s' % (origfile, id)
+
+            linkmap[origref] = self.get_full_ref(t)
+
+class Commentary(AbstractStudybible, HTML2OsisMixin, FixOverlappingVersesMixin):
+    """
+        Handling of the commentary part of the study bible
     """
     def __init__(self, options):
         if isinstance(options, dict):
@@ -86,53 +127,24 @@ class Commentary(FixOverlappingVersesMixin, HTML2OsisMixin):
         self._adjust_studynotes(body)
         self._write_studynotes_into_osis(body)
 
-    def _collect_linkmap(self):
-        """
-            Collect mapping from HTML ids to osisRefs
-        """
-        logger.info('Collecting linkmap from studynotes')
-        for t in self.osistext.find_all(id=True):
-            id = t['id']
-            if 'origFile' in t.attrs:
-                origfile = t['origFile']
-            else:
-                p = t.find_parent(origFile=True)
-                origfile = p['origFile']
 
-            origfile = origfile.split(os.path.sep)[-1]
-            origref = '%s#%s' % (origfile, id)
-            target = t.find_parent('div', annotateType='commentary')['annotateRef'].split(' ')[0]
-            self.link_map[origref] = '%s:%s' % (self.options.work_id, target)
+    def get_full_ref(self, t):
+        target = t.find_parent('div', annotateType='commentary')['annotateRef'].split(' ')[0]
+        return '%s:%s' % (self.options.work_id, target)
 
-    def _fix_postponed_references(self):
-        """ Fix postponed reference links from the mapping collected in self.link_map"""
-        logger.info('Fixing postponed references')
-        for r in itertools.chain(*[i.find_all('reference', postpone='1') for i in (self.osistext, self.articles.osistext)]):
-            if r['origRef'] in self.link_map:
-                r['osisRef'] = self.link_map[r['origRef']]
-                del r['postpone']
-            else:
-                r.replace_with('[%s]' % r.text)
-                logger.error('link not found %s', r['origRef'])
 
-    def _clean_tags(self, osis):
-        """
-            Finally remove all temporary/illegal attributes
-        """
-        attrs = set()
-        for t in osis.find_all():
-            for a in t.attrs.keys():
-                if a not in ['osisID', 'type', 'src', 'role', 'osisRef', 'osisWork', 'href', 'annotateRef', 'annotateType']:
-                    attrs.add(a)
-                    del t[a]
-        logger.info('Removed attributes: %s', ', '.join(attrs))
 
-    def process_epub(self, epub_filename, output_filename=None, assume_zip=False):
-        time_start = time.time()
-        if not zipfile.is_zipfile(epub_filename):
-            raise Exception('Zip file assumed!')
+    def write_osis_file(self, output_filename):
+        logger.info('Writing OSIS file %s', output_filename)
 
-        epub_zip = zipfile.ZipFile(epub_filename)
+        out = codecs.open(output_filename, 'w', encoding='utf-8')
+        if self.options.debug:
+            out.write(self.root_soup.prettify())
+        else:
+            out.write(unicode(self.root_soup))
+        out.close()
+
+    def read_studynotes(self, epub_zip):
         studynote_files = [i for i in epub_zip.namelist() if i.endswith('studynotes.xhtml')]
         if not studynote_files:
             raise Exception('No studynotes in zip file')
@@ -148,23 +160,45 @@ class Commentary(FixOverlappingVersesMixin, HTML2OsisMixin):
             self._read_studynotes_file(data_in)
 
 
-        self.articles = Articles(self.options, self.osistext)
+class Convert(object):
+    """
+        Main class for study bible to SWORD module conversion
+    """
+    def __init__(self, options):
+        if isinstance(options, dict):
+            options = dict_to_options(options)
+        self.options = options
+        self.linkmap = {}
+
+    def process_epub(self, epub_filename, output_filename=None, assume_zip=False):
+        time_start = time.time()
+        if not zipfile.is_zipfile(epub_filename):
+            raise Exception('Zip file assumed!')
+
+        epub_zip = zipfile.ZipFile(epub_filename)
+        self.commentary = Commentary(self.options)
+        self.commentary.read_studynotes(epub_zip)
+
+        self.articles = Articles(self.options, self.commentary.osistext)
         self.articles.read_resources(epub_zip)
 
-        self.fix_overlapping_ranges()
-        self._collect_linkmap()
-        for i in self.osistext.find_all(unwrap=True):
+        self.commentary.fix_overlapping_ranges()
+        self.commentary.collect_linkmap(self.linkmap)
+        for i in self.commentary.osistext.find_all(unwrap=True):
             i.unwrap()
 
-        self.articles.collect_linkmap(self.link_map)
+        self.articles.collect_linkmap(self.linkmap)
         self.articles.post_process()
-        self._fix_postponed_references()
+
+        self.commentary.fix_postponed_references(self.linkmap)
+        self.articles.fix_postponed_references(self.linkmap)
+
         for i in self.articles.osistext.find_all(unwrap=True):
             i.unwrap()
 
         logger.info('Cleaning up illegal/temporary attributes')
-        self._clean_tags(self.osistext)
-        self._clean_tags(self.articles.osistext)
+        self.commentary.clean_tags()
+        self.articles.clean_tags()
 
         if self.options.sword:
             self.make_sword_module(epub_zip, output_filename, epub_filename)
@@ -172,28 +206,18 @@ class Commentary(FixOverlappingVersesMixin, HTML2OsisMixin):
         else:
             self.make_sword_module(epub_zip, output_filename, epub_filename)
             output_filename = output_filename or '%s.xml' % epub_filename.rsplit('.')[0]
-            self.write_osis_file(output_filename)
+            self.commentary.write_osis_file(output_filename)
             self.articles.write('articles_'+output_filename)
         if epub_zip:
             epub_zip.close()
         logger.info('Processing took %.2f minutes', (time.time()-time_start)/60.)
-
-    def write_osis_file(self, output_filename):
-        logger.info('Writing OSIS file %s', output_filename)
-
-        out = codecs.open(output_filename, 'w', encoding='utf-8')
-        if self.options.debug:
-            out.write(self.root_soup.prettify())
-        else:
-            out.write(unicode(self.root_soup))
-        out.close()
 
     def make_sword_module(self, epub_zip, output_filename, input_dir):
         from study2osis import __version__
         logger.info('Making sword module')
         fd, bible_osis_filename = tempfile.mkstemp()
         temp = codecs.open(bible_osis_filename, 'w', 'utf-8')
-        temp.write(unicode(self.root_soup))
+        temp.write(unicode(self.commentary.root_soup))
         temp.close()
         os.close(fd)
         fd, articles_osis_filename = tempfile.mkstemp()
@@ -213,7 +237,7 @@ class Commentary(FixOverlappingVersesMixin, HTML2OsisMixin):
         os.mkdir(articles_final)
         image_path = os.path.join(module_final, 'images')
         os.mkdir(image_path)
-        for i in set(self.images + self.articles.images):
+        for i in set(self.commentary.images + self.articles.images):
             if epub_zip:
                 image_fname_in_zip = '/'.join(IMAGE_DIRECTORY + [i])
                 image_fname_in_fs = os.path.join(image_path, i)
@@ -264,7 +288,7 @@ class Commentary(FixOverlappingVersesMixin, HTML2OsisMixin):
         shutil.rmtree(module_dir)
         logger.info('Sword module written in %s', zip_filename)
 
-class Articles(HTML2OsisMixin):
+class Articles(AbstractStudybible, HTML2OsisMixin):
     """
         Write articles & book introdcutions as a SWORD genbook
     """
@@ -298,27 +322,6 @@ class Articles(HTML2OsisMixin):
         osisid = re.sub(r'[^\w]', ' ', osisid)
         osisid = re.sub(r'  +', ' ', osisid)
         return osisid.strip()
-
-    def collect_linkmap(self, link_map):
-        """
-            Collect mapping from HTML ids to osisRefs
-        """
-        logger.info('Collecting linkmap from resources')
-        for t in self.osistext.find_all(id=True):
-            id = t['id']
-            if 'origFile' in t.attrs:
-                origfile = t['origFile']
-            else:
-                p = t.find_parent(origFile=True)
-                if not p:
-                    logger.error('origFile could not be found for %s', t)
-                    continue
-                origfile = p['origFile']
-
-            origfile = origfile.split(os.path.sep)[-1]
-            origref = '%s#%s' % (origfile, id)
-
-            link_map[origref] = self.get_full_ref(t)
 
     def get_full_ref(self, t):
         target_tag = None

@@ -7,7 +7,7 @@
 """
 
 import optparse
-from study2osis import Commentary
+from study2osis import Convert
 from ipdb import launch_ipdb_on_exception
 import logging
 logging.basicConfig(level=logging.INFO)
@@ -33,7 +33,7 @@ if __name__ == '__main__':
     if len(args) == 1:
         input_dir = args[0]
         with launch_ipdb_on_exception():
-            o = Commentary(options)
+            o = Convert(options)
             o.process_epub(input_dir)
     else:
         parser.print_help()
