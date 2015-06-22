@@ -51,6 +51,10 @@ class AbstractStudybible(object):
         """
             Finally remove all temporary/illegal attributes
         """
+
+        for i in self.osistext.find_all(unwrap=True):
+            i.unwrap()
+
         attrs = set()
         for t in self.osistext.find_all():
             for a in t.attrs.keys():
@@ -86,7 +90,7 @@ class AbstractStudybible(object):
             origfile = origfile.split(os.path.sep)[-1]
             origref = '%s#%s' % (origfile, id)
 
-            linkmap[origref] = self.get_full_ref(t)
+            linkmap[origref] = self._get_full_ref(t)
 
 class Commentary(AbstractStudybible, HTML2OsisMixin, FixOverlappingVersesMixin):
     """
@@ -120,19 +124,9 @@ class Commentary(AbstractStudybible, HTML2OsisMixin, FixOverlappingVersesMixin):
             osistext.append(ot)
             osistext.append(nt)
 
-    def _read_studynotes_file(self, data_in):
-        input_html = BeautifulSoup(data_in, 'xml')
-
-        body = input_html.find('body')
-        self._adjust_studynotes(body)
-        self._write_studynotes_into_osis(body)
-
-
-    def get_full_ref(self, t):
+    def _get_full_ref(self, t):
         target = t.find_parent('div', annotateType='commentary')['annotateRef'].split(' ')[0]
         return '%s:%s' % (self.options.work_id, target)
-
-
 
     def write_osis_file(self, output_filename):
         logger.info('Writing OSIS file %s', output_filename)
@@ -157,8 +151,294 @@ class Commentary(AbstractStudybible, HTML2OsisMixin, FixOverlappingVersesMixin):
             logger.debug('Reading studynotes %s %s', studynote_files.index(fn), fn)
             data_in = epub_zip.read(fn)
             self.current_filename = fn
-            self._read_studynotes_file(data_in)
 
+            input_html = BeautifulSoup(data_in, 'xml')
+            body = input_html.find('body')
+            self._adjust_studynotes(body)
+            self._write_studynotes_into_osis(body)
+
+
+class Articles(AbstractStudybible, HTML2OsisMixin):
+    """
+        Write articles & book introdcutions as a SWORD genbook
+    """
+
+    class TitleNotFound(Exception):
+        pass
+
+    def __init__(self, options, commentary):
+        if isinstance(options, dict):
+            options = dict_to_options(options)
+        self.options = options
+        self.commentary = commentary
+        self.current_filename = ''
+        self.images = []
+        self.used_resources = []
+
+        template = jinja2.Template(open(GENBOOK_TEMPLATE_XML).read())
+        output_xml = BeautifulSoup(template.render(title=options.title, author='-', work_id=options.work_id), 'xml')
+        self.root_soup = output_xml
+        self.osistext = output_xml.find('osisText')
+        self.articles = output_xml.new_tag('div', type='book', osisID=self._fix_osis_id('Articles'))
+        self.intros = output_xml.new_tag('div', type='book', osisID=self._fix_osis_id('Book introductions'))
+        self.other = output_xml.new_tag('div', type='book', osisID=self._fix_osis_id('Other resources'))
+
+        self.osistext.append(self.intros)
+        self.osistext.append(self.articles)
+        self.osistext.append(self.other)
+        self.path = HTML_DIRECTORY[0]
+
+
+    def read_resources(self, epub_zip):
+        self.zip = epub_zip
+
+        logger.info('Reading articles')
+        soup = self._give_soup(os.path.join(self.path, 'toc.xhtml'))
+        self._process_toc(soup)
+
+        bookintro_files = [i for i in epub_zip.namelist() if i.endswith('intros.xhtml')]
+        if self.options.debug:
+            bookintro_files = bookintro_files[:2]
+
+        logger.info('Reading intros')
+        for f in bookintro_files:
+            logger.debug('Reading intros %s', f)
+            self.current_filename = f
+            bs = self._give_soup(f).find('body')
+            if not self._process_html_body(bs):
+                continue
+            for h1 in bs.find_all('h1'):
+                h1.extract()
+            self.intros.append(bs)
+
+        logger.info('Reading other resources')
+        resource_files = [i for i in epub_zip.namelist() if i.endswith('resources.xhtml') and i.split(os.path.sep)[-1] not in self.used_resources]
+        if self.options.debug:
+            resource_files = resource_files[:2]
+        for f in resource_files:
+            self.current_filename = f
+            bs = self._give_soup(f).find('body')
+            if not self._process_html_body(bs):
+                continue
+            for h1 in bs.find_all('h1'):
+                h1.extract()
+            self.other.append(bs)
+
+        # do not split sections in short articles
+        # TODO: make optional
+        for c in self.root_soup.find_all('div', type='chapter'):
+            if len(c.text) < 20000:
+                for pt in c.find_all('div', type='section'):
+                    pt.unwrap()
+
+        for pt in self.root_soup.find_all('div', type='section'):
+            pt['osisID'] = self._fix_osis_id(pt.title.text)
+            #pt['osisID'] = '- ' + self.fix_osis_id(pt.title.text)
+
+    def post_process(self):
+        logger.info('Postprosessing resources')
+        for t in self.root_soup.find_all('title', h3=1):
+                t.name = 'p'
+                hi = self.root_soup.new_tag('hi', type='bold')
+                for c in t.children:
+                    hi.append(c.extract())
+                t.append(hi)
+
+        for p in self.root_soup.find_all('div', type='paragraph'):
+            p.name = 'p'
+            del p.attrs['type']
+
+        for pt in self.root_soup.find_all('div', class_='passagetitle'):
+            pt.unwrap()
+        for pt in self.root_soup.find_all('div'):
+            if 'epub:type' in pt.attrs:
+                del pt['epub:type']
+
+        for pt in self.root_soup.find_all('div', type='subSection'):
+            pt.unwrap()
+
+        for pt in self.root_soup.find_all('div'):
+            if 'type' not in pt.attrs:
+                pt.unwrap()
+
+        sort_tag_content(self.other, key=lambda x: x.attrs.get('osisID', ''))
+
+        full_toc = self.root_soup.new_tag('div', type='book', osisID=self._fix_osis_id('Full Table of Contents'))
+        full_toc.append(self.root_soup.new_tag('title'))
+        full_toc.title.string = 'Full table of contents'
+        full_toc.append(self._generate_toc(self.osistext, 2))
+        self.osistext.insert(0, full_toc)
+
+
+        for d in self.osistext.find_all('div', osisID=True):
+            children = d.find_all('div', osisID=True, recursive=False)
+            if children:
+                root_list = self._generate_toc(d, 2)
+                if root_list:
+                    p = self.root_soup.new_tag('p')
+                    p.append(self.root_soup.new_tag('title'))
+                    p.title.string = 'Table of Contents'
+                    p.append(root_list)
+                    d.find('div', osisID=True).insert_before(p)
+
+    def write_osis_file(self, output_filename):
+        logger.info('Writing articles into OSIS file %s', output_filename)
+        output = codecs.open(output_filename, 'w', encoding='utf-8')
+        if self.options.debug:
+            output.write(self.root_soup.prettify())
+        else:
+            output.write(unicode(self.root_soup))
+        output.close()
+
+    def _fix_osis_id(self, osisid):
+        """Remove illegal characters from osisIDs"""
+        osisid = re.sub(r'[^\w]', ' ', osisid)
+        osisid = re.sub(r'  +', ' ', osisid)
+        return osisid.strip()
+
+    def _get_full_ref(self, t):
+        target_tag = None
+        if 'osisID' in t.attrs:
+            target_tag = t
+        if not target_tag:
+            target_tag = t.find_parent('div', type='section')
+        if not target_tag:
+            target_tag = t.find_parent('div', type='chapter')
+
+        target = target_tag['osisID']
+        for t in target_tag.parents:
+            if 'osisID' in t.attrs:
+                target = '%s%s%s' % (t['osisID'], GENBOOK_BRANCH_SEPARATION_LETTER, target)
+
+        return '%s:%s' % (self.options.work_id + '_articles', target)
+
+    def _fix_section_one_level(self, soup, tag, type):
+        h_tags = soup.find_all(tag, recursive=False)
+        for i in xrange(len(h_tags)):
+            start = h_tags[i]
+            next_siblings = list(start.next_siblings)
+            start['old_name'] = start.name
+            start.name = 'title'
+            start['origFile'] = self.current_filename
+
+            if tag == 'h3':
+                start['h3'] = 1
+
+            section = self.root_soup.new_tag('div', type=type, origFile=self.current_filename)
+            start.wrap(section)
+            end = None
+            if i < len(h_tags)-1:
+                end = h_tags[i+1]
+
+            for t in next_siblings:
+                if t == end:
+                    break
+                section.append(t.extract())
+
+    def _fix_sections(self, soup):
+        self._fix_section_one_level(soup, 'h2', 'section')
+        for i in soup.find_all('div', type='section'):
+            self._fix_section_one_level(i, 'h3', 'subSection')
+
+    def _find_title(self, soup):
+        titletag = soup.find(re.compile('^(h1|h2|h3)$'))
+        if not titletag:
+            raise self.TitleNotFound
+        title = titletag.text.strip(' \n')
+        return titletag, title
+
+    def _move_to_studynote(self, tag, target_ref):
+        """
+            To fix properly also links, this should be run actually *before* doing final fixes to studynotes
+        """
+        tag = tag.extract()
+        self._all_fixes(tag)
+        studynote = self.commentary.find('div', annotateRef=re.compile('^%s'%target_ref))
+        tag['type'] = 'paragraph'
+        studynote.append(tag)
+        logger.info('Moved %s to %s', tag.title.text, target_ref)
+
+    def _manual_fixes(self, soup):
+        """
+            Manually some inconsistencies in ESV Study Bible (should does not affect other works)
+        """
+
+        # TODO: first check if this is really ESV Study Bible!
+
+        if not self.current_filename.endswith('intros.xhtml'):
+            return True
+
+        titletag, title = self._find_title(soup)
+        if title == 'The Battle at Mount Gilboa':
+            self._move_to_studynote(titletag.parent, '1Sam.31.1')
+        elif title == 'The Deity of Jesus Christ in 2 Peter':
+            self._move_to_studynote(titletag.parent, '2Pet.3.1')
+        elif title in [u'Ezra—History of Salvation in the Old Testament',
+                       u'Song of Solomon—History of Salvation in the Old Testament']:
+            target = self.articles.find(osisID=self._fix_osis_id('History of Salvation in the Old Testament'
+                                                                '  Preparing the Way for Christ'))
+            self._fix_sections(soup)
+            self._all_fixes(soup)
+            for i in soup.children:
+                target.append(i)
+            return False
+        return True
+
+    def _process_html_body(self, soup):
+        if self.current_filename.endswith('resources.xhtml') and len(soup.find_all('h1')) > 1:
+            logger.error('More than 1 h1 header in a file %s!', self.current_filename)
+
+        try:
+            if not self._manual_fixes(soup):
+                return False
+
+            titletag, title = self._find_title(soup)
+        except self.TitleNotFound:
+            logger.error('No title in %s, skipping.', self.current_filename)
+            return False
+
+        titletag.name = 'title'
+        titletag['origFile'] = self.current_filename
+        titletag.string = title
+        self._fix_sections(soup)
+        self._all_fixes(soup)
+        soup.name = 'div'
+        soup['type'] = 'chapter'
+        soup['osisID'] = self._fix_osis_id(title)
+        soup['origFile'] = self.current_filename
+        return True
+
+
+    def _process_toc(self, toc_soup):
+        for itm in toc_soup.find_all('li'):
+            fname = itm.find('a')['href'].split('#')[0]
+            if fname.endswith('resources.xhtml'):
+                self.used_resources.append(fname.split(os.path.sep)[-1])
+                self.current_filename = fname
+                soup = self._give_soup(os.path.join(self.path, fname)).find('body')
+                self._process_html_body(soup)
+                self.articles.append(soup)
+
+    def _generate_toc(self, node, depth):
+        if not depth:
+            return
+        root_list = self.root_soup.new_tag('list')
+        for n in node.find_all('div', osisID=True, recursive=False):
+            item = self.root_soup.new_tag('item')
+            ref = self._get_full_ref(n)
+            item.append(self.root_soup.new_tag('reference', osisRef=ref))
+            title_tag = n.find('title', recursive=False)
+            item.reference.string = title_tag.text if title_tag else n['osisID']
+            root_list.append(item)
+            l = self._generate_toc(n, depth-1)
+            if l:
+                item.append(l)
+        if root_list.contents:
+            return root_list
+
+    def _give_soup(self, fname):
+        input_data = self.zip.read(fname)
+        return BeautifulSoup(input_data, 'xml')
 
 class Convert(object):
     """
@@ -168,6 +448,8 @@ class Convert(object):
         if isinstance(options, dict):
             options = dict_to_options(options)
         self.options = options
+        self.commentary = Commentary(self.options)
+        self.articles = Articles(self.options, self.commentary.osistext)
         self.linkmap = {}
 
     def process_epub(self, epub_filename, output_filename=None, assume_zip=False):
@@ -176,16 +458,13 @@ class Convert(object):
             raise Exception('Zip file assumed!')
 
         epub_zip = zipfile.ZipFile(epub_filename)
-        self.commentary = Commentary(self.options)
+
         self.commentary.read_studynotes(epub_zip)
 
-        self.articles = Articles(self.options, self.commentary.osistext)
         self.articles.read_resources(epub_zip)
 
         self.commentary.fix_overlapping_ranges()
         self.commentary.collect_linkmap(self.linkmap)
-        for i in self.commentary.osistext.find_all(unwrap=True):
-            i.unwrap()
 
         self.articles.collect_linkmap(self.linkmap)
         self.articles.post_process()
@@ -193,21 +472,18 @@ class Convert(object):
         self.commentary.fix_postponed_references(self.linkmap)
         self.articles.fix_postponed_references(self.linkmap)
 
-        for i in self.articles.osistext.find_all(unwrap=True):
-            i.unwrap()
-
         logger.info('Cleaning up illegal/temporary attributes')
         self.commentary.clean_tags()
         self.articles.clean_tags()
 
         if self.options.sword:
             self.make_sword_module(epub_zip, output_filename, epub_filename)
-
         else:
             self.make_sword_module(epub_zip, output_filename, epub_filename)
             output_filename = output_filename or '%s.xml' % epub_filename.rsplit('.')[0]
             self.commentary.write_osis_file(output_filename)
-            self.articles.write('articles_'+output_filename)
+            self.articles.write_osis_file('articles_'+output_filename)
+
         if epub_zip:
             epub_zip.close()
         logger.info('Processing took %.2f minutes', (time.time()-time_start)/60.)
@@ -288,284 +564,3 @@ class Convert(object):
         shutil.rmtree(module_dir)
         logger.info('Sword module written in %s', zip_filename)
 
-class Articles(AbstractStudybible, HTML2OsisMixin):
-    """
-        Write articles & book introdcutions as a SWORD genbook
-    """
-    def __init__(self, options, commentary):
-        if isinstance(options, dict):
-            options = dict_to_options(options)
-        self.options = options
-        self.commentary = commentary
-        self.current_filename = ''
-        self.images = []
-        self.used_resources = []
-
-        template = jinja2.Template(open(GENBOOK_TEMPLATE_XML).read())
-        output_xml = BeautifulSoup(template.render(title=options.title, author='-', work_id=options.work_id), 'xml')
-        self.root_soup = output_xml
-        self.osistext = output_xml.find('osisText')
-        self.articles = output_xml.new_tag('div', type='book', osisID=self.fix_osis_id('Articles'))
-        self.intros = output_xml.new_tag('div', type='book', osisID=self.fix_osis_id('Book introductions'))
-        self.other = output_xml.new_tag('div', type='book', osisID=self.fix_osis_id('Other resources'))
-
-        self.osistext.append(self.intros)
-        self.osistext.append(self.articles)
-        self.osistext.append(self.other)
-        self.path = HTML_DIRECTORY[0]
-
-    class TitleNotFound(Exception):
-        pass
-
-    def fix_osis_id(self, osisid):
-        """Remove illegal characters from osisIDs"""
-        osisid = re.sub(r'[^\w]', ' ', osisid)
-        osisid = re.sub(r'  +', ' ', osisid)
-        return osisid.strip()
-
-    def get_full_ref(self, t):
-        target_tag = None
-        if 'osisID' in t.attrs:
-            target_tag = t
-        if not target_tag:
-            target_tag = t.find_parent('div', type='section')
-        if not target_tag:
-            target_tag = t.find_parent('div', type='chapter')
-
-        target = target_tag['osisID']
-        for t in target_tag.parents:
-            if 'osisID' in t.attrs:
-                target = '%s%s%s' % (t['osisID'], GENBOOK_BRANCH_SEPARATION_LETTER, target)
-
-        return '%s:%s' % (self.options.work_id + '_articles', target)
-
-    def _fix_section_one_level(self, soup, tag, type):
-        h_tags = soup.find_all(tag, recursive=False)
-        for i in xrange(len(h_tags)):
-            start = h_tags[i]
-            next_siblings = list(start.next_siblings)
-            start['old_name'] = start.name
-            start.name = 'title'
-            start['origFile'] = self.current_filename
-
-            if tag == 'h3':
-                start['h3'] = 1
-
-            section = self.root_soup.new_tag('div', type=type, origFile=self.current_filename)
-
-            start.wrap(section)
-
-            end = None
-            if i < len(h_tags)-1:
-                end = h_tags[i+1]
-
-            for t in next_siblings:
-                if t == end:
-                    break
-                section.append(t.extract())
-
-    def _fix_sections(self, soup):
-        self._fix_section_one_level(soup, 'h2', 'section')
-        for i in soup.find_all('div', type='section'):
-            self._fix_section_one_level(i, 'h3', 'subSection')
-
-    def _find_title(self, soup):
-        titletag = soup.find(re.compile('^(h1|h2|h3)$'))
-        if not titletag:
-            raise self.TitleNotFound
-        title = titletag.text.strip(' \n')
-        return titletag, title
-
-    def _move_to_studynote(self, tag, target_ref):
-        """
-            To fix properly also links, this should be run actually *before* doing final fixes to studynotes
-        """
-        tag = tag.extract()
-        self._all_fixes(tag)
-        studynote = self.commentary.find('div', annotateRef=re.compile('^%s'%target_ref))
-        tag['type'] = 'paragraph'
-        studynote.append(tag)
-        logger.info('Moved %s to %s', tag.title.text, target_ref)
-
-    def _manual_fixes(self, soup):
-        """
-            Manually some inconsistencies in ESV Study Bible (should does not affect other works)
-        """
-
-        # TODO: first check if this is really ESV Study Bible!
-
-        if not self.current_filename.endswith('intros.xhtml'):
-            return True
-
-        titletag, title = self._find_title(soup)
-        if title == 'The Battle at Mount Gilboa':
-            self._move_to_studynote(titletag.parent, '1Sam.31.1')
-        elif title == 'The Deity of Jesus Christ in 2 Peter':
-            self._move_to_studynote(titletag.parent, '2Pet.3.1')
-        elif title in [u'Ezra—History of Salvation in the Old Testament',
-                       u'Song of Solomon—History of Salvation in the Old Testament']:
-            target = self.articles.find(osisID=self.fix_osis_id('History of Salvation in the Old Testament'
-                                                                '  Preparing the Way for Christ'))
-            self._fix_sections(soup)
-            self._all_fixes(soup)
-            for i in soup.children:
-                target.append(i)
-            return False
-        return True
-
-    def _process_html_body(self, soup):
-        if self.current_filename.endswith('resources.xhtml') and len(soup.find_all('h1')) > 1:
-            logger.error('More than 1 h1 header in a file %s!', self.current_filename)
-
-        try:
-            if not self._manual_fixes(soup):
-                return False
-
-            titletag, title = self._find_title(soup)
-        except self.TitleNotFound:
-            logger.error('No title in %s, skipping.', self.current_filename)
-            return False
-
-        titletag.name = 'title'
-        titletag['origFile'] = self.current_filename
-        titletag.string = title
-        self._fix_sections(soup)
-        self._all_fixes(soup)
-        soup.name = 'div'
-        soup['type'] = 'chapter'
-        soup['osisID'] = self.fix_osis_id(title)
-        soup['origFile'] = self.current_filename
-        return True
-
-
-    def _process_toc(self, toc_soup):
-        for itm in toc_soup.find_all('li'):
-            fname = itm.find('a')['href'].split('#')[0]
-            if fname.endswith('resources.xhtml'):
-                self.used_resources.append(fname.split(os.path.sep)[-1])
-                self.current_filename = fname
-                soup = self._give_soup(os.path.join(self.path, fname)).find('body')
-                self._process_html_body(soup)
-                self.articles.append(soup)
-
-    def read_resources(self, epub_zip):
-        self.zip = epub_zip
-
-        logger.info('Reading articles')
-        soup = self._give_soup(os.path.join(self.path, 'toc.xhtml'))
-        self._process_toc(soup)
-
-        bookintro_files = [i for i in epub_zip.namelist() if i.endswith('intros.xhtml')]
-        if self.options.debug:
-            bookintro_files = bookintro_files[:2]
-
-        logger.info('Reading intros')
-        for f in bookintro_files:
-            logger.debug('Reading intros %s', f)
-            self.current_filename = f
-            bs = self._give_soup(f).find('body')
-            if not self._process_html_body(bs):
-                continue
-            for h1 in bs.find_all('h1'):
-                h1.extract()
-            self.intros.append(bs)
-
-        logger.info('Reading other resources')
-        resource_files = [i for i in epub_zip.namelist() if i.endswith('resources.xhtml') and i.split(os.path.sep)[-1] not in self.used_resources]
-        if self.options.debug:
-            resource_files = resource_files[:2]
-        for f in resource_files:
-            self.current_filename = f
-            bs = self._give_soup(f).find('body')
-            if not self._process_html_body(bs):
-                continue
-            for h1 in bs.find_all('h1'):
-                h1.extract()
-            self.other.append(bs)
-
-        # do not split sections in short articles
-        # TODO: make optional
-        for c in self.root_soup.find_all('div', type='chapter'):
-            if len(c.text) < 20000:
-                for pt in c.find_all('div', type='section'):
-                    pt.unwrap()
-
-        for pt in self.root_soup.find_all('div', type='section'):
-            pt['osisID'] = self.fix_osis_id(pt.title.text)
-            #pt['osisID'] = '- ' + self.fix_osis_id(pt.title.text)
-
-    def generate_toc(self, node, depth):
-        if not depth:
-            return
-        root_list = self.root_soup.new_tag('list')
-        for n in node.find_all('div', osisID=True, recursive=False):
-            item = self.root_soup.new_tag('item')
-            ref = self.get_full_ref(n)
-            item.append(self.root_soup.new_tag('reference', osisRef=ref))
-            title_tag = n.find('title', recursive=False)
-            item.reference.string = title_tag.text if title_tag else n['osisID']
-            root_list.append(item)
-            l = self.generate_toc(n, depth-1)
-            if l:
-                item.append(l)
-        if root_list.contents:
-            return root_list
-
-    def post_process(self):
-        logger.info('Postprosessing resources')
-        for t in self.root_soup.find_all('title', h3=1):
-                t.name = 'p'
-                hi = self.root_soup.new_tag('hi', type='bold')
-                for c in t.children:
-                    hi.append(c.extract())
-                t.append(hi)
-
-        for p in self.root_soup.find_all('div', type='paragraph'):
-            p.name = 'p'
-            del p.attrs['type']
-
-        for pt in self.root_soup.find_all('div', class_='passagetitle'):
-            pt.unwrap()
-        for pt in self.root_soup.find_all('div'):
-            if 'epub:type' in pt.attrs:
-                del pt['epub:type']
-
-        for pt in self.root_soup.find_all('div', type='subSection'):
-            pt.unwrap()
-
-        for pt in self.root_soup.find_all('div'):
-            if 'type' not in pt.attrs:
-                pt.unwrap()
-
-        sort_tag_content(self.other, key=lambda x: x.attrs.get('osisID', ''))
-
-        full_toc = self.root_soup.new_tag('div', type='book', osisID=self.fix_osis_id('Full Table of Contents'))
-        full_toc.append(self.root_soup.new_tag('title'))
-        full_toc.title.string = 'Full table of contents'
-        full_toc.append(self.generate_toc(self.osistext, 2))
-        self.osistext.insert(0, full_toc)
-
-
-        for d in self.osistext.find_all('div', osisID=True):
-            children = d.find_all('div', osisID=True, recursive=False)
-            if children:
-                root_list = self.generate_toc(d, 2)
-                if root_list:
-                    p = self.root_soup.new_tag('p')
-                    p.append(self.root_soup.new_tag('title'))
-                    p.title.string = 'Table of Contents'
-                    p.append(root_list)
-                    d.find('div', osisID=True).insert_before(p)
-
-    def write(self, output_filename):
-        logger.info('Writing articles into OSIS file %s', output_filename)
-        output = codecs.open(output_filename, 'w', encoding='utf-8')
-        if self.options.debug:
-            output.write(self.root_soup.prettify())
-        else:
-            output.write(unicode(self.root_soup))
-        output.close()
-
-    def _give_soup(self, fname):
-        input_data = self.zip.read(fname)
-        return BeautifulSoup(input_data, 'xml')

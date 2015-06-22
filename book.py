@@ -36,6 +36,6 @@ if __name__ == '__main__':
             o = Articles(options)
             epub_zip = zipfile.ZipFile(input_dir)
             o.read_resources(epub_zip)
-            o.write(input_dir.rsplit('.',1)[0] + '.xml')
+            o.write_osis_file(input_dir.rsplit('.',1)[0] + '.xml')
     else:
         parser.print_help()
