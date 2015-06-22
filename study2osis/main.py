@@ -276,9 +276,9 @@ class Articles2Osis(HTML2OsisMixin):
         output_xml = BeautifulSoup(template.render(title=options.title, author='-', work_id=options.work_id), 'xml')
         self.root_soup = output_xml
         self.osistext = output_xml.find('osisText')
-        self.articles = output_xml.new_tag('div', type='book', osisID='Articles')
-        self.intros = output_xml.new_tag('div', type='book', osisID='Book_introductions')
-        self.other = output_xml.new_tag('div', type='book', osisID='Other_resources')
+        self.articles = output_xml.new_tag('div', type='book', osisID=self.fix_osis_id('Articles'))
+        self.intros = output_xml.new_tag('div', type='book', osisID=self.fix_osis_id('Book introductions'))
+        self.other = output_xml.new_tag('div', type='book', osisID=self.fix_osis_id('Other resources'))
 
         self.osistext.append(self.intros)
         self.osistext.append(self.articles)
@@ -287,9 +287,9 @@ class Articles2Osis(HTML2OsisMixin):
 
     def fix_osis_id(self, osisid):
         """Remove illegal characters from osisIDs"""
-        osisid = re.sub(r'[^\w_]', '_', osisid)
-        osisid = re.sub(r'__+', '_', osisid)
-        return osisid.strip('_')
+        osisid = re.sub(r'[^\w]', ' ', osisid)
+        osisid = re.sub(r'  +', ' ', osisid)
+        return osisid.strip()
 
     def collect_linkmap(self, link_map):
         """
@@ -491,6 +491,13 @@ class Articles2Osis(HTML2OsisMixin):
                 pt.unwrap()
 
         sort_tag_content(self.other, key=lambda x: x.attrs.get('osisID', ''))
+
+        full_toc = self.root_soup.new_tag('div', type='book', osisID=self.fix_osis_id('Full table of contents'))
+        full_toc.append(self.root_soup.new_tag('title'))
+        full_toc.title.string = 'Full table of contents'
+        full_toc.append(self.generate_toc(self.osistext))
+        self.osistext.insert(0, full_toc)
+
 
         for d in self.osistext.find_all('div', osisID=True):
             children = d.find_all('div', osisID=True, recursive=False)
