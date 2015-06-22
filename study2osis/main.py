@@ -492,7 +492,7 @@ class Articles2Osis(HTML2OsisMixin):
 
         sort_tag_content(self.other, key=lambda x: x.attrs.get('osisID', ''))
 
-        full_toc = self.root_soup.new_tag('div', type='book', osisID=self.fix_osis_id('Full table of contents'))
+        full_toc = self.root_soup.new_tag('div', type='book', osisID=self.fix_osis_id('Full Table of Contents'))
         full_toc.append(self.root_soup.new_tag('title'))
         full_toc.title.string = 'Full table of contents'
         full_toc.append(self.generate_toc(self.osistext))
@@ -506,7 +506,7 @@ class Articles2Osis(HTML2OsisMixin):
                 if root_list:
                     p = self.root_soup.new_tag('p')
                     p.append(self.root_soup.new_tag('title'))
-                    p.title.string = 'Table of contents'
+                    p.title.string = 'Table of Contents'
                     p.append(root_list)
                     d.find('div', osisID=True).insert_before(p)
 
