@@ -102,7 +102,7 @@ class HTML2OsisMixin(object):
 
             elif filename.endswith('studynotes.xhtml'):
                 try:
-                    ref = '%s:%s' % (self.options.work_id, parse_studybible_reference(verserange))
+                    ref = '%s:%s' % (self.work_id, parse_studybible_reference(verserange))
                 except IllegalReference:
                     a['postpone'] = '1'
                     a['origRef'] = a['href']
@@ -247,7 +247,7 @@ class HTML2OsisMixin(object):
         self._fix_table(img_div)
         for img in img_div.find_all('img'):
             img.name = 'figure'
-            img['src'] = img['src'].replace('../Images/', 'images/')
+            img['src'] = img['src'].replace('../Images/', self.images_path)
             self.images.append(img['src'].split('/')[-1])
 
     def _fix_fact(self, fact_div):

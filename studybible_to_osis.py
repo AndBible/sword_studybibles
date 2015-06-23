@@ -22,11 +22,7 @@ if __name__ == '__main__':
                       help='Write OSIS files.')
     parser.add_option('--no_nonadj', action='store_true', dest='no_nonadj', default=False,
                       help='Do not create empty comments (with only links) for non-adjacent verse ranges')
-    parser.add_option('--title', dest='title', default='ESV Study Bible Notes',
-                      help='OSIS title')
-    parser.add_option('--work_id', dest='work_id', default='ESVN',
-                      help='OSIS work_id')
-    parser.add_option('--bible_work_id', dest='bible_work_id', default='ESVS',
+    parser.add_option('--bible_work_id', dest='bible_work_id', default='None',
                       help='Bible work_id (verses are linked there). "None" -> no work_id specification')
 
     options, args = parser.parse_args()

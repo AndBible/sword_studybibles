@@ -100,7 +100,7 @@ class FixOverlappingVersesMixin(object):
             if is_tab:
                 title_text += ' [T]'
 
-            link_tag = self.root_soup.new_tag('reference', osisRef=self.options.work_id + ':' +
+            link_tag = self.root_soup.new_tag('reference', osisRef=self.work_id + ':' +
                                               str(verses(link_target_comment)[0]), cls='reference_links')
 
             link_tag.append(self.root_soup.new_string(title_text))
