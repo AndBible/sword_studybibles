@@ -304,7 +304,7 @@ class HTML2OsisMixin(object):
                 try:
                     ref = parse_studybible_reference(rootlevel_tag['id'])
                 except IllegalReference:
-                    logger.error('NOT writing %s', rootlevel_tag)
+                    logger.warning('NOT writing %s', rootlevel_tag)
                     rootlevel_tag.extract()
                     continue
 
