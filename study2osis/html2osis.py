@@ -171,6 +171,11 @@ class HTML2OsisMixin(object):
             elif s.name == 'li':
                 s.name = 'item'
 
+            elif s.name == 'p':
+                if s.attrs.get('class', '') == 'glossary-word':
+                    s.name = 'title'
+                    s.find_next_sibling('p', class_='glossary-entry').insert(0, s.extract())
+
             # replace italic strings
             elif s.name in ['i', 'cite']:
                 s.name = 'hi'
@@ -203,10 +208,7 @@ class HTML2OsisMixin(object):
                 elif cls == 'bible-version':
                     assert s.text.lower() in ['esv', 'lxx', 'kjv', 'mt', 'nkjv', 'nasb'], s.text
                     s.replace_with(s.text.upper())
-                elif cls in ['h3-inline']:
-                    s.name = 'hi'
-                    s['type'] = 'bold'
-                elif cls in ['profile-lead', 'facts-lead']:
+                elif cls in ['h3-inline', 'initial', 'profile-lead', 'facts-lead']:
                     s.name = 'hi'
                     s['type'] = 'bold'
                 elif cls in ['good-king', 'mixture-king', 'bad-king', 'normal', 'smaller',

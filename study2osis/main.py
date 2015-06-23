@@ -334,6 +334,8 @@ class Articles(AbstractStudybible, HTML2OsisMixin):
     def _find_title(self, soup):
         titletag = soup.find(re.compile('^(h1|h2|h3)$'))
         if not titletag:
+            titletag = soup.find('p', class_='concordance-section')
+        if not titletag:
             raise self.TitleNotFound
         title = titletag.text.strip(' \n')
         return titletag, title
@@ -363,7 +365,7 @@ class Articles(AbstractStudybible, HTML2OsisMixin):
                 self._move_to_studynote(titletag.parent, '1Sam.31.1')
             elif title == 'The Deity of Jesus Christ in 2 Peter':
                 self._move_to_studynote(titletag.parent, '2Pet.3.1')
-        
+
         if title in [u'Ezra—History of Salvation in the Old Testament',
                        u'Song of Solomon—History of Salvation in the Old Testament']:
             target = self.articles.find(osisID=self._fix_osis_id('History of Salvation in the Old Testament'
