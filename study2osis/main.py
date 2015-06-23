@@ -421,7 +421,11 @@ class Articles(AbstractStudybible, HTML2OsisMixin):
                 self.used_resources.append(fname.split(os.path.sep)[-1])
                 self.current_filename = fname
                 soup = self._give_soup(os.path.join(self.path, fname)).find('body')
-                self._process_html_body(soup)
+                try:
+                    self._process_html_body(soup)
+                except self.TitleNotFound:
+                    logger.error('No title in %s, skipping.', self.current_filename)
+                    continue
                 self.articles.append(soup)
 
     def _generate_toc(self, node, depth):
