@@ -35,7 +35,9 @@ Install osis2mod tool that can be obtained from http://www.crosswire.org/wiki/De
 
 To convert ePub to SWORD module (compressed in a zip file), run command
 
-    python studybible_to_osis.py your_book.epub your_module.zip --sword
+    python studybible_to_osis.py your_book.epub --sword
+
+This will generate SWORD module in a file called your_book_module.zip
 
 Quality
 -------
