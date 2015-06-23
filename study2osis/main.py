@@ -3,7 +3,7 @@
     Copyright (C) 2015 Tuomas Airaksinen.
     See LICENCE.txt
 """
-import os, zipfile, tempfile, codecs, shutil, subprocess, logging, itertools, time
+import os, zipfile, tempfile, codecs, shutil, subprocess, logging, time
 import re
 
 from bs4 import BeautifulSoup
@@ -11,14 +11,13 @@ import jinja2
 
 from .html2osis import HTML2OsisMixin
 from .overlapping import FixOverlappingVersesMixin, sort_tag_content
-from .bible_data import BOOKREFS, TAGS_BOOK
 
 HTML_DIRECTORY = ['OEBPS', 'Text']
 IMAGE_DIRECTORY = ['OEBPS', 'Images']
-BIBLE_CONF_TEMPLATE = os.path.join(__file__.rsplit(os.path.sep,1)[0], 'template.conf')
+BIBLE_CONF_TEMPLATE = os.path.join(__file__.rsplit(os.path.sep,1)[0], 'commentary_template.conf')
 GENBOOK_CONF_TEMPLATE = os.path.join(__file__.rsplit(os.path.sep,1)[0], 'genbook_template.conf')
 
-COMMENTARY_TEMPLATE_XML = os.path.join(__file__.rsplit(os.path.sep,1)[0], 'template.xml')
+COMMENTARY_TEMPLATE_XML = os.path.join(__file__.rsplit(os.path.sep,1)[0], 'commentary_template.xml')
 GENBOOK_TEMPLATE_XML = os.path.join(__file__.rsplit(os.path.sep,1)[0], 'genbook_template.xml')
 GENBOOK_BRANCH_SEPARATION_LETTER = '/'
 
@@ -475,14 +474,13 @@ class Convert(object):
 
         if self.options.sword:
             self.make_sword_module(epub_zip, output_filename, epub_filename)
-        else:
-            self.make_sword_module(epub_zip, output_filename, epub_filename)
+
+        if self.options.osis:
             output_filename = output_filename or '%s.xml' % epub_filename.rsplit('.')[0]
             self.commentary.write_osis_file(output_filename)
             self.articles.write_osis_file('articles_'+output_filename)
 
-        if epub_zip:
-            epub_zip.close()
+        epub_zip.close()
         logger.info('Processing took %.2f minutes', (time.time()-time_start)/60.)
 
     def make_sword_module(self, epub_zip, output_filename, input_dir):

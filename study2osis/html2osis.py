@@ -9,7 +9,7 @@ from bs4 import NavigableString
 
 logger = logging.getLogger('html2osis')
 
-from .bible_data import BOOKREFS, TAGS_BOOK, TAGS_CHAPTES, TAGS_VERSES
+from .bible_data import BOOKREFS
 from .bibleref import IllegalReference, first_reference, Ref
 
 

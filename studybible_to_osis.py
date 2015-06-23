@@ -17,11 +17,11 @@ if __name__ == '__main__':
     parser.add_option('--debug', action='store_true', dest='debug', default=False,
                       help='Debug mode')
     parser.add_option('--sword', action='store_true', dest='sword', default=False,
-                      help='Generate sword module (zip file). osis2mod is needed.')
+                      help='Generate sword module. osis2mod anx xml2gbs from libsword-tools are needed.')
+    parser.add_option('--osis', action='store_true', dest='osis', default=False,
+                      help='Write OSIS files.')
     parser.add_option('--no_nonadj', action='store_true', dest='no_nonadj', default=False,
                       help='Do not create empty comments (with only links) for non-adjacent verse ranges')
-    parser.add_option('--tag_level', dest='tag_level', default=0, type=int,
-                      help='Tag level: 0: none, 1: book divs, 2: chapter divs, 3: verse divs')
     parser.add_option('--title', dest='title', default='ESV Study Bible Notes',
                       help='OSIS title')
     parser.add_option('--work_id', dest='work_id', default='ESVN',
