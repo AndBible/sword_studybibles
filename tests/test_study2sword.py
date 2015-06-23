@@ -27,9 +27,13 @@ def link_refs(osistext, ref):
 
 class options:
     title = 'ESVN'
-    work_id = 'ESVN'
+    commentary_work_id = 'ESVN'
+    articles_work_id = 'ESVN'
+    commentary_images_path = ''
+    articles_images_path = ''
     no_nonadj = False
     tag_level = 0
+    metadata = {}
 
 def test_overlapping_1():
     osistext = BeautifulSoup("""
@@ -129,12 +133,12 @@ def test_genbook():
         </body>
     """, 'xml')
 
-    s = Articles(options)
+    s = Articles(options, None)
     #s.root_soup = s.osistext = osistext
-    s._process_html_body(osistext.find('body'), 'fname')
+    s._process_html_body(osistext.find('body'))
     result = unicode(s.root_soup) #.prettify()
     print repr(result)
-    assert result == u'<?xml version="1.0" encoding="utf-8"?>\n<osis xmlns="http://www.bibletechnologies.net/2003/OSIS/namespace" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.bibletechnologies.net/2003/OSIS/namespace http://www.bibletechnologies.net/osisCore.2.1.1.xsd">\n<osisText osisIDWork="ESVN" osisRefWork="book" xml:lang="en">\n<header>\n<work osisWork="ESVN">\n<title>ESVN</title>\n<creator role="aut">-</creator>\n<identifier type="OSIS">ESVN</identifier>\n<refSystem>Bible.NRSV</refSystem>\n<language>en</language>\n</work>\n</header>\n<div osisID="Book introductions" type="book"/><div osisID="Articles" type="book"/><div osisID="Other resources" type="book"/></osisText>\n</osis>'
+    assert result == u'<?xml version="1.0" encoding="utf-8"?>\n<osis xmlns="http://www.bibletechnologies.net/2003/OSIS/namespace" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.bibletechnologies.net/2003/OSIS/namespace http://www.bibletechnologies.net/osisCore.2.1.1.xsd">\n<osisText osisIDWork="ESVN" osisRefWork="book" xml:lang="en">\n<header>\n<work osisWork="ESVN">\n<title/>\n<creator role="aut"/>\n<identifier type="OSIS">ESVN</identifier>\n<refSystem>Bible.NRSV</refSystem>\n</work>\n</header>\n<div osisID="Book introductions" type="book"/><div osisID="Articles" type="book"/><div osisID="Uncategorized resources" type="book"/></osisText>\n</osis>'
 
 def test_genbook2():
     osistext = BeautifulSoup("""
@@ -150,13 +154,12 @@ def test_genbook2():
         </body>
     """, 'xml')
 
-    s = Articles(options)
+    s = Articles(options, None)
     #s.root_soup = s.osistext = osistext
-    s._process_html_body(osistext.find('body'), 'fname')
+    s._process_html_body(osistext.find('body'))
     result = unicode(s.root_soup) #.prettify()
     print repr(result)
-    assert result == u'<?xml version="1.0" encoding="utf-8"?>\n<osis xmlns="http://www.bibletechnologies.net/2003/OSIS/namespace" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.bibletechnologies.net/2003/OSIS/namespace http://www.bibletechnologies.net/osisCore.2.1.1.xsd">\n<osisText osisIDWork="ESVN" osisRefWork="book" xml:lang="en">\n<header>\n<work osisWork="ESVN">\n<title>ESVN</title>\n<creator role="aut">-</creator>\n<identifier type="OSIS">ESVN</identifier>\n<refSystem>Bible.NRSV</refSystem>\n<language>en</language>\n</work>\n</header>\n<div osisID="Book introductions" type="book"/><div osisID="Articles" type="book"/><div osisID="Other resources" type="book"/></osisText>\n</osis>'
-
+    assert result == u'<?xml version="1.0" encoding="utf-8"?>\n<osis xmlns="http://www.bibletechnologies.net/2003/OSIS/namespace" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.bibletechnologies.net/2003/OSIS/namespace http://www.bibletechnologies.net/osisCore.2.1.1.xsd">\n<osisText osisIDWork="ESVN" osisRefWork="book" xml:lang="en">\n<header>\n<work osisWork="ESVN">\n<title/>\n<creator role="aut"/>\n<identifier type="OSIS">ESVN</identifier>\n<refSystem>Bible.NRSV</refSystem>\n</work>\n</header>\n<div osisID="Book introductions" type="book"/><div osisID="Articles" type="book"/><div osisID="Uncategorized resources" type="book"/></osisText>\n</osis>'
 
 def test_expand_ranges():
     assert expand_ranges("Gen.2.4-Gen.2.6") == "Gen.2.4 Gen.2.5 Gen.2.6"
