@@ -35,7 +35,7 @@ if __name__ == '__main__':
         with launch_ipdb_on_exception():
             o = Articles(options)
             epub_zip = zipfile.ZipFile(input_dir)
-            o.read_resources(epub_zip)
+            o.read_resources_from_epub(epub_zip)
             o.write_osis_file(input_dir.rsplit('.',1)[0] + '.xml')
     else:
         parser.print_help()

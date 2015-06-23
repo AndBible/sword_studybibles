@@ -156,6 +156,9 @@ class Articles(AbstractStudybible, HTML2OsisMixin):
     class TitleNotFound(Exception):
         pass
 
+    class ExceptionalProcessing(Exception):
+        pass
+
     def __init__(self, options, commentary):
         if isinstance(options, dict):
             options = dict_to_options(options)
@@ -171,15 +174,29 @@ class Articles(AbstractStudybible, HTML2OsisMixin):
         self.osistext = output_xml.find('osisText')
         self.articles = output_xml.new_tag('div', type='book', osisID=self._fix_osis_id('Articles'))
         self.intros = output_xml.new_tag('div', type='book', osisID=self._fix_osis_id('Book introductions'))
-        self.other = output_xml.new_tag('div', type='book', osisID=self._fix_osis_id('Other resources'))
-
+        self.other = output_xml.new_tag('div', type='book', osisID=self._fix_osis_id('Uncategorized resources'))
         self.osistext.append(self.intros)
         self.osistext.append(self.articles)
         self.osistext.append(self.other)
         self.path = HTML_DIRECTORY[0]
 
+    def _read_resources(self, files, target):
+        if self.options.debug:
+            files = files[:2]
+        for f in files:
+            logger.debug('Reading %s', f)
+            self.current_filename = f
+            bs = self._give_soup(f).find('body')
+            try:
+                self._process_html_body(bs)
+            except (self.TitleNotFound, self.ExceptionalProcessing):
+                logger.info('Processed via exception (OK): %s', f)
+                continue
+            for h1 in bs.find_all('h1'):
+                h1.extract()
+            target.append(bs)
 
-    def read_resources(self, epub_zip):
+    def read_resources_from_epub(self, epub_zip):
         self.zip = epub_zip
 
         logger.info('Reading articles')
@@ -187,33 +204,15 @@ class Articles(AbstractStudybible, HTML2OsisMixin):
         self._process_toc(soup)
 
         bookintro_files = [i for i in epub_zip.namelist() if i.endswith('intros.xhtml')]
-        if self.options.debug:
-            bookintro_files = bookintro_files[:2]
 
         logger.info('Reading intros')
-        for f in bookintro_files:
-            logger.debug('Reading intros %s', f)
-            self.current_filename = f
-            bs = self._give_soup(f).find('body')
-            if not self._process_html_body(bs):
-                continue
-            for h1 in bs.find_all('h1'):
-                h1.extract()
-            self.intros.append(bs)
+        self._read_resources(bookintro_files, self.intros)
 
         logger.info('Reading other resources')
         resource_files = [i for i in epub_zip.namelist() if i.endswith('resources.xhtml')
                           and i.split(os.path.sep)[-1] not in self.used_resources]
-        if self.options.debug:
-            resource_files = resource_files[:2]
-        for f in resource_files:
-            self.current_filename = f
-            bs = self._give_soup(f).find('body')
-            if not self._process_html_body(bs):
-                continue
-            for h1 in bs.find_all('h1'):
-                h1.extract()
-            self.other.append(bs)
+
+        self._read_resources(resource_files, self.other)
 
         # do not split sections in short articles
         # TODO: make optional
@@ -259,7 +258,6 @@ class Articles(AbstractStudybible, HTML2OsisMixin):
         full_toc.title.string = 'Full table of contents'
         full_toc.append(self._generate_toc(self.osistext, 2))
         self.osistext.insert(0, full_toc)
-
 
         for d in self.osistext.find_all('div', osisID=True):
             children = d.find_all('div', osisID=True, recursive=False)
@@ -332,10 +330,11 @@ class Articles(AbstractStudybible, HTML2OsisMixin):
             self._fix_section_one_level(i, 'h3', 'subSection')
 
     def _find_title(self, soup):
-        titletag = soup.find(re.compile('^(h1|h2|h3)$'))
+        titletag = soup.find(re.compile('^(h1|h2|h3|title)$'))
         if not titletag:
             titletag = soup.find('p', class_='concordance-section')
         if not titletag:
+            logger.error('No title in %s, skipping.', self.current_filename)
             raise self.TitleNotFound
         title = titletag.text.strip(' \n')
         return titletag, title
@@ -356,10 +355,22 @@ class Articles(AbstractStudybible, HTML2OsisMixin):
             Manually fix some inconsistencies in ESV Study Bible (should does not affect other works)
         """
 
-        # TODO: first check if this is really ESV Study Bible!
-
-
         titletag, title = self._find_title(soup)
+
+        if titletag.attrs.get('class', '') == 'concordance-section':
+            target = self.articles.find(osisID=self._fix_osis_id('Concordance'))
+            target.append(soup.extract())
+            titletag.name = 'title'
+            titletag['origFile'] = self.current_filename
+            soup['type'] = 'section'
+            self._fix_sections(soup)
+            self._all_fixes(soup)
+            soup.name = 'div'
+            soup['osisID'] = self._fix_osis_id(title)
+            soup['origFile'] = self.current_filename
+            raise self.ExceptionalProcessing
+
+        # TODO: first check if this is really ESV Study Bible!
         if self.current_filename.endswith('intros.xhtml'):
             if title == 'The Battle at Mount Gilboa':
                 self._move_to_studynote(titletag.parent, '1Sam.31.1')
@@ -367,40 +378,33 @@ class Articles(AbstractStudybible, HTML2OsisMixin):
                 self._move_to_studynote(titletag.parent, '2Pet.3.1')
 
         if title in [u'Ezra—History of Salvation in the Old Testament',
-                       u'Song of Solomon—History of Salvation in the Old Testament']:
+                     u'Song of Solomon—History of Salvation in the Old Testament']:
             target = self.articles.find(osisID=self._fix_osis_id('History of Salvation in the Old Testament'
-                                                                '  Preparing the Way for Christ'))
+                                                                 '  Preparing the Way for Christ'))
             self._fix_sections(soup)
             self._all_fixes(soup)
             for i in soup.children:
                 target.append(i)
-            return False
+            raise self.ExceptionalProcessing
         return True
 
     def _process_html_body(self, soup):
         if self.current_filename.endswith('resources.xhtml') and len(soup.find_all('h1')) > 1:
             logger.error('More than 1 h1 header in a file %s!', self.current_filename)
 
-        try:
-            if not self._manual_fixes(soup):
-                return False
+        self._manual_fixes(soup)
 
-            titletag, title = self._find_title(soup)
-        except self.TitleNotFound:
-            logger.error('No title in %s, skipping.', self.current_filename)
-            return False
+        titletag, title = self._find_title(soup)
 
-        titletag.name = 'title'
-        titletag['origFile'] = self.current_filename
-        titletag.string = title
-        self._fix_sections(soup)
-        self._all_fixes(soup)
         soup.name = 'div'
         soup['type'] = 'chapter'
-        soup['osisID'] = self._fix_osis_id(title)
         soup['origFile'] = self.current_filename
-        return True
-
+        titletag.name = 'title'
+        titletag['origFile'] = self.current_filename
+        #titletag.string = title
+        soup['osisID'] = self._fix_osis_id(title)
+        self._fix_sections(soup)
+        self._all_fixes(soup)
 
     def _process_toc(self, toc_soup):
         for itm in toc_soup.find_all('li'):
@@ -454,7 +458,7 @@ class Convert(object):
 
         self.commentary.read_studynotes(epub_zip)
 
-        self.articles.read_resources(epub_zip)
+        self.articles.read_resources_from_epub(epub_zip)
 
         self.commentary.fix_overlapping_ranges()
         self.commentary.collect_linkmap(self.linkmap)
