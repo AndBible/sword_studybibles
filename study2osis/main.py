@@ -351,20 +351,20 @@ class Articles(AbstractStudybible, HTML2OsisMixin):
 
     def _manual_fixes(self, soup):
         """
-            Manually some inconsistencies in ESV Study Bible (should does not affect other works)
+            Manually fix some inconsistencies in ESV Study Bible (should does not affect other works)
         """
 
         # TODO: first check if this is really ESV Study Bible!
 
-        if not self.current_filename.endswith('intros.xhtml'):
-            return True
 
         titletag, title = self._find_title(soup)
-        if title == 'The Battle at Mount Gilboa':
-            self._move_to_studynote(titletag.parent, '1Sam.31.1')
-        elif title == 'The Deity of Jesus Christ in 2 Peter':
-            self._move_to_studynote(titletag.parent, '2Pet.3.1')
-        elif title in [u'Ezra—History of Salvation in the Old Testament',
+        if self.current_filename.endswith('intros.xhtml'):
+            if title == 'The Battle at Mount Gilboa':
+                self._move_to_studynote(titletag.parent, '1Sam.31.1')
+            elif title == 'The Deity of Jesus Christ in 2 Peter':
+                self._move_to_studynote(titletag.parent, '2Pet.3.1')
+        
+        if title in [u'Ezra—History of Salvation in the Old Testament',
                        u'Song of Solomon—History of Salvation in the Old Testament']:
             target = self.articles.find(osisID=self._fix_osis_id('History of Salvation in the Old Testament'
                                                                 '  Preparing the Way for Christ'))
