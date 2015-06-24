@@ -150,14 +150,14 @@ class FixOverlappingVersesMixin(object):
             comment.links = []
             comment.replaced_by = None
 
-            vs = verses(expand_ranges(comment['annotateRef']))
+            vs = expand_ranges(comment['annotateRef'], verses=True)
 
             # make figures and tables linked to some larger range: rest of this chapter as well as whole next chapter
             if comment.find(re.compile('(figure|table)')):
                 first = vs[0]
                 last = Ref('%s.%s.%s'%(first.book, min(first.chapter+1, LAST_CHAPTERS[first.book]),
                                       CHAPTER_LAST_VERSES['%s.%s'%(first.book, first.chapter)]))
-                vs2 = verses(expand_ranges('%s-%s'%(first, last)))
+                vs2 = expand_ranges('%s-%s'%(first, last), verses=True)
                 vs = sorted(set(vs+vs2))
 
             comment['annotateRef'] = ' '.join(str(i) for i in vs)
@@ -206,7 +206,7 @@ class FixOverlappingVersesMixin(object):
         """
         all_comments = self.osistext.find_all('div', annotateType='commentary', recursive=False)
         for comment in all_comments:
-            orig_verses = verses(expand_ranges(comment['origRef']))
+            orig_verses = expand_ranges(comment['origRef'], verses=True)
             actual_verses = verses(comment)
             new_actual_verses = set(copy(actual_verses))
 

@@ -181,9 +181,12 @@ def _expand_ranges(ref):
     result = ' '.join('%s.%s.%s' % i for i in verselist)
     return result
 
-def expand_ranges(ref):
+def expand_ranges(ref, verses=False):
     """ Make sure that expanded ranges are also sorted propertly"""
     r = _expand_ranges(ref)
-    return ' '.join(str(j) for j in sorted([Ref(i) for i in set(r.split(' '))]))
+    if verses:
+        return sorted([Ref(i) for i in set(r.split(' '))])
+    else:
+        return ' '.join(str(j) for j in sorted([Ref(i) for i in set(r.split(' '))]))
 
 

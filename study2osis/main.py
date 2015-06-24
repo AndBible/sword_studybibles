@@ -292,7 +292,6 @@ class Articles(AbstractStudybible, HTML2OsisMixin):
             output.write(unicode(self.root_soup))
         output.close()
 
-
     def _get_full_ref(self, t):
         target_tag = None
         if 'osisID' in t.attrs:
