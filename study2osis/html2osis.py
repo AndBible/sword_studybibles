@@ -5,6 +5,7 @@
 """
 
 import logging
+
 from bs4 import NavigableString
 
 logger = logging.getLogger('html2osis')
@@ -62,12 +63,20 @@ def parse_studybible_reference(html_id):
         result.append('-'.join(refs))
     return ' '.join(result)
 
+
 class HTML2OsisMixin(object):
     """
         HTML to OSIS fixes
     """
+
     def _guess_range_end(self, ref, text):
-        # not an easy task to do robustly, disabling for now
+        """
+            This is not an easy task to implement robustly, but at least some clear cases
+            could be done.
+
+            TODO.
+            Disabled for now.
+        """
         return ref
 
         range_dash = u'–'
@@ -79,7 +88,7 @@ class HTML2OsisMixin(object):
                 chap, ver = range_end.split(':')
             else:
                 ver = range_end.strip()
-            return '%s-%s.%s.%s'%(ref, book, chap, ver)
+            return '%s-%s.%s.%s' % (ref, book, chap, ver)
         return ref
 
     def _fix_bibleref_links(self, input_soup):
@@ -155,7 +164,7 @@ class HTML2OsisMixin(object):
             elif s.name in ['h4', 'h5']:
                 logger.warning('h4 or h5 tag used: %s', s)
                 s.name = 'title'
-            #    s.name = 'div'
+            # s.name = 'div'
             #    s['type'] = 'paragraph'
 
             elif s.name in ['ol', 'ul']:
@@ -286,7 +295,8 @@ class HTML2OsisMixin(object):
                 else:
                     logger.error('Unknown div class %s', cls)
             elif rootlevel_tag.name == 'p':
-                if rootlevel_tag['class'] not in ['outline-1', 'outline-3', 'outline-4', 'study-note-continue', 'study-note']:
+                if rootlevel_tag['class'] not in ['outline-1', 'outline-3', 'outline-4', 'study-note-continue',
+                                                  'study-note']:
                     logger.error('not handled %s', rootlevel_tag['class'])
             elif rootlevel_tag.name == 'table':
                 rootlevel_tag = rootlevel_tag.wrap(self.root_soup.new_tag('div', type='paragraph'))
@@ -327,10 +337,10 @@ class HTML2OsisMixin(object):
                         previous = previous.find_previous_sibling('div', annotateType='commentary')
                         r = Ref(first_reference(previous['annotateRef']))
                     previous = now
-#
+                #
                 else:
                     previous = rootlevel_tag.find_previous_sibling('div', annotateType='commentary')
-#                previous = rootlevel_tag.find_previous_sibling('div', annotateType='commentary')
+                #                previous = rootlevel_tag.find_previous_sibling('div', annotateType='commentary')
                 rootlevel_tag.extract()
                 previous.append(rootlevel_tag)
 

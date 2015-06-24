@@ -13,6 +13,7 @@ from .bibleref import verses, references_to_string, expand_ranges, Ref
 
 LINK_MAX_LENGTH = 38
 
+
 def find_subranges(orig_verses, actual_verses):
     ranges = []
     r = []
@@ -27,8 +28,9 @@ def find_subranges(orig_verses, actual_verses):
         ranges.append(r)
     return ranges
 
+
 def sort_tag_content(soup, key):
-    new_contents = [ i.extract() for i in soup.find_all(recursive=False) ]
+    new_contents = [i.extract() for i in soup.find_all(recursive=False)]
     new_contents.sort(key=key)
     for i in new_contents:
         soup.append(i)
@@ -36,7 +38,17 @@ def sort_tag_content(soup, key):
 
 class FixOverlappingVersesMixin(object):
     """
-    Provides fix_overlapping_ranges() function and it's helpers to Study2Osis class
+    SWORD does not support overlapping verse ranges at all in commentary modules. This means
+    that there cannot be two comments that are designated for one verse.
+
+    However, in study bibles there are often comments that are designated for a larger passage,
+    as well as then smaller notes for individual verses.
+
+    My approach is to create comment of a larger verse range in the first verse of its range
+    (and if there is another verse, merge these comments) and then create links from subsecuent
+    verses to this verse. Approach seems to work pretty well with most SWORD applications.
+
+    This class provides fix_overlapping_ranges() function and it's helper functions.
     """
 
     def fix_overlapping_ranges(self):
@@ -83,7 +95,7 @@ class FixOverlappingVersesMixin(object):
             links.append(link_item)
             is_fig = False
             is_tab = False
-            length = LINK_MAX_LENGTH # trying to keep lenght pretty short so that mobile phones would show only one line/link
+            length = LINK_MAX_LENGTH  # trying to keep lenght pretty short so that mobile phones would show only one line/link
             if link_target_comment.find('figure'):
                 length -= 3
                 is_fig = True
@@ -101,7 +113,8 @@ class FixOverlappingVersesMixin(object):
                 title_text += ' [T]'
 
             link_tag = self.root_soup.new_tag('reference', osisRef=self.work_id + ':' +
-                                              str(verses(link_target_comment)[0]), cls='reference_links')
+                                                                   str(verses(link_target_comment)[0]),
+                                              cls='reference_links')
 
             link_tag.append(self.root_soup.new_string(title_text))
             link_item.append(link_tag)
@@ -130,16 +143,14 @@ class FixOverlappingVersesMixin(object):
                 self.verse_comment_dict[v] = prev_comment
             else:
                 # some earlier, merged comment
-                assert verses(existing_comment)[0]<new_verses[0]
+                assert verses(existing_comment)[0] < new_verses[0]
                 verses_for_existing = verses(existing_comment)
                 verses_for_existing.remove(v)
                 existing_comment['annotateRef'] = references_to_string(verses_for_existing)
                 self.verse_comment_dict[v] = prev_comment
 
-
         prev_comment['origRef'] += ' ' + comment['origRef']
         prev_comment['annotateRef'] = ' '.join(str(i) for i in new_verses)
-
 
     def _expand_all_ranges(self):
         all_comments = self.osistext.find_all('div', annotateType='commentary', recursive=False)
@@ -155,10 +166,10 @@ class FixOverlappingVersesMixin(object):
             # make figures and tables linked to some larger range: rest of this chapter as well as whole next chapter
             if comment.find(re.compile('(figure|table)')):
                 first = vs[0]
-                last = Ref('%s.%s.%s'%(first.book, min(first.chapter+1, LAST_CHAPTERS[first.book]),
-                                      CHAPTER_LAST_VERSES['%s.%s'%(first.book, first.chapter)]))
-                vs2 = expand_ranges('%s-%s'%(first, last), verses=True)
-                vs = sorted(set(vs+vs2))
+                last = Ref('%s.%s.%s' % (first.book, min(first.chapter + 1, LAST_CHAPTERS[first.book]),
+                                         CHAPTER_LAST_VERSES['%s.%s' % (first.book, first.chapter)]))
+                vs2 = expand_ranges('%s-%s' % (first, last), verses=True)
+                vs = sorted(set(vs + vs2))
 
             comment['annotateRef'] = ' '.join(str(i) for i in vs)
             for v in verses(comment):
@@ -194,7 +205,6 @@ class FixOverlappingVersesMixin(object):
                     assert 'removed' not in comment.attrs
                     self.verse_comment_dict[v] = comment
 
-
     def _create_empty_comments_for_nonadjancent_ranges(self):
         """
             In this step, we create empty comments for those verses that belong to larger
@@ -219,7 +229,6 @@ class FixOverlappingVersesMixin(object):
                 comment.insert_after(empty_comment)
             comment['annotateRef'] = references_to_string(new_actual_verses)
 
-
     def _add_reference_links_to_comments(self):
         # Add 'see also' reference links to comments with larger range
         for ref, comment_set in self.verse_comments_all_dict.iteritems():
@@ -238,7 +247,8 @@ class FixOverlappingVersesMixin(object):
             verse = references_to_string(verse)
         verse = str(verse)
 
-        comment = self.root_soup.new_tag('div', annotateType='commentary', type='section', annotateRef=verse, new_empty='1')
+        comment = self.root_soup.new_tag('div', annotateType='commentary', type='section', annotateRef=verse,
+                                         new_empty='1')
         comment.links = []
         comment['origRef'] = comment['annotateRef']
         comment.replaced_by = None

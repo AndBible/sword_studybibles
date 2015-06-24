@@ -3,8 +3,16 @@
     Copyright (C) 2015 Tuomas Airaksinen.
     See LICENCE.txt
 """
-import os, zipfile, tempfile, codecs, shutil, subprocess, logging, time
-import re, errno
+import os
+import zipfile
+import tempfile
+import codecs
+import shutil
+import subprocess
+import logging
+import time
+import re
+import optparse
 
 from bs4 import BeautifulSoup
 import jinja2
@@ -14,14 +22,15 @@ from .overlapping import FixOverlappingVersesMixin, sort_tag_content
 
 HTML_DIRECTORY = ['OEBPS', 'Text']
 IMAGE_DIRECTORY = ['OEBPS', 'Images']
-BIBLE_CONF_TEMPLATE = os.path.join(__file__.rsplit(os.path.sep,1)[0], 'commentary_template.conf')
-GENBOOK_CONF_TEMPLATE = os.path.join(__file__.rsplit(os.path.sep,1)[0], 'genbook_template.conf')
+BIBLE_CONF_TEMPLATE = os.path.join(__file__.rsplit(os.path.sep, 1)[0], 'commentary_template.conf')
+GENBOOK_CONF_TEMPLATE = os.path.join(__file__.rsplit(os.path.sep, 1)[0], 'genbook_template.conf')
 
-COMMENTARY_TEMPLATE_XML = os.path.join(__file__.rsplit(os.path.sep,1)[0], 'commentary_template.xml')
-GENBOOK_TEMPLATE_XML = os.path.join(__file__.rsplit(os.path.sep,1)[0], 'genbook_template.xml')
+COMMENTARY_TEMPLATE_XML = os.path.join(__file__.rsplit(os.path.sep, 1)[0], 'commentary_template.xml')
+GENBOOK_TEMPLATE_XML = os.path.join(__file__.rsplit(os.path.sep, 1)[0], 'genbook_template.xml')
 GENBOOK_BRANCH_SEPARATION_LETTER = '/'
 
 logger = logging.getLogger('study2osis')
+
 
 class Options(object):
     def __init__(self, d=None):
@@ -33,6 +42,7 @@ class Options(object):
 
     def update(self, d):
         self.__dict__.update(d)
+
 
 def dict_to_options(opts):
     if not isinstance(opts, dict):
@@ -50,13 +60,19 @@ def dict_to_options(opts):
 
     return options
 
+
 def fix_osis_id(osisid):
     """Remove illegal characters from osisIDs"""
     osisid = re.sub(r'[^\w]', ' ', osisid)
     osisid = re.sub(r'  +', ' ', osisid)
     return osisid.strip()
 
+
 class AbstractStudybible(object):
+    """
+        Some common methods for Commentary and Articles
+    """
+
     def clean_tags(self):
         """
             Finally remove all temporary/illegal attributes
@@ -68,7 +84,8 @@ class AbstractStudybible(object):
         attrs = set()
         for t in self.osistext.find_all():
             for a in t.attrs.keys():
-                if a not in ['osisID', 'type', 'src', 'role', 'osisRef', 'osisWork', 'href', 'annotateRef', 'annotateType']:
+                if a not in ['osisID', 'type', 'src', 'role', 'osisRef', 'osisWork', 'href', 'annotateRef',
+                             'annotateType']:
                     attrs.add(a)
                     del t[a]
         logger.info('Removed attributes: %s', ', '.join(attrs))
@@ -102,10 +119,13 @@ class AbstractStudybible(object):
 
             linkmap[origref] = self._get_full_ref(t)
 
+
 class Commentary(AbstractStudybible, HTML2OsisMixin, FixOverlappingVersesMixin):
     """
-        Handling of the commentary part of the study bible
+        Write commentary studynotes as OSIS xml that can be converted
+        to SWORD commentary with osis2mod
     """
+
     def __init__(self, options):
         if isinstance(options, dict):
             options = dict_to_options(options)
@@ -156,12 +176,13 @@ class Commentary(AbstractStudybible, HTML2OsisMixin, FixOverlappingVersesMixin):
                 self.osistext.append(i.extract())
 
         self._adjust_studynotes()
-       #     self._write_studynotes_into_osis(body)
+        #     self._write_studynotes_into_osis(body)
 
 
 class Articles(AbstractStudybible, HTML2OsisMixin):
     """
-        Write articles & book introdcutions as a SWORD genbook
+        Write articles & book introdcutions as OSIS xml that can be converted
+        to SWORD genbook with xml2gbs
     """
 
     class TitleNotFound(Exception):
@@ -170,13 +191,13 @@ class Articles(AbstractStudybible, HTML2OsisMixin):
     class ExceptionalProcessing(Exception):
         pass
 
-    def __init__(self, options, commentary):
+    def __init__(self, options, commentary_xml):
         if isinstance(options, dict):
             options = dict_to_options(options)
         self.options = options
         self.images_path = options.articles_images_path
         self.work_id = options.articles_work_id
-        self.commentary = commentary
+        self.commentary_xml = commentary_xml
         self.current_filename = ''
         self.images = []
         self.used_resources = []
@@ -236,16 +257,16 @@ class Articles(AbstractStudybible, HTML2OsisMixin):
 
         for pt in self.root_soup.find_all('div', type='section'):
             pt['osisID'] = fix_osis_id(pt.title.text)
-            #pt['osisID'] = '- ' + self.fix_osis_id(pt.title.text)
+            # pt['osisID'] = '- ' + self.fix_osis_id(pt.title.text)
 
     def post_process(self):
         logger.info('Postprosessing resources')
         for t in self.root_soup.find_all('title', h3=1):
-                t.name = 'p'
-                hi = self.root_soup.new_tag('hi', type='bold')
-                for c in t.children:
-                    hi.append(c.extract())
-                t.append(hi)
+            t.name = 'p'
+            hi = self.root_soup.new_tag('hi', type='bold')
+            for c in t.children:
+                hi.append(c.extract())
+            t.append(hi)
 
         for p in self.root_soup.find_all('div', type='paragraph'):
             p.name = 'p'
@@ -323,8 +344,8 @@ class Articles(AbstractStudybible, HTML2OsisMixin):
             section = self.root_soup.new_tag('div', type=type, origFile=self.current_filename)
             start.wrap(section)
             end = None
-            if i < len(h_tags)-1:
-                end = h_tags[i+1]
+            if i < len(h_tags) - 1:
+                end = h_tags[i + 1]
 
             for t in next_siblings:
                 if t == end:
@@ -352,7 +373,7 @@ class Articles(AbstractStudybible, HTML2OsisMixin):
         """
         tag = tag.extract()
         self._all_fixes(tag)
-        studynote = self.commentary.find('div', annotateRef=re.compile('^%s'%target_ref))
+        studynote = self.commentary_xml.find('div', annotateRef=re.compile('^%s' % target_ref))
         tag['type'] = 'paragraph'
         studynote.append(tag)
         logger.info('Moved %s to %s', tag.title.text, target_ref)
@@ -387,7 +408,7 @@ class Articles(AbstractStudybible, HTML2OsisMixin):
         if title in [u'Ezra—History of Salvation in the Old Testament',
                      u'Song of Solomon—History of Salvation in the Old Testament']:
             target = self.articles.find(osisID=fix_osis_id('History of Salvation in the Old Testament'
-                                                                 '  Preparing the Way for Christ'))
+                                                           '  Preparing the Way for Christ'))
             self._fix_sections(soup)
             self._all_fixes(soup)
             for i in soup.children:
@@ -408,7 +429,7 @@ class Articles(AbstractStudybible, HTML2OsisMixin):
         soup['origFile'] = self.current_filename
         titletag.name = 'title'
         titletag['origFile'] = self.current_filename
-        #titletag.string = title
+        # titletag.string = title
         soup['osisID'] = fix_osis_id(title)
         self._fix_sections(soup)
         self._all_fixes(soup)
@@ -438,7 +459,7 @@ class Articles(AbstractStudybible, HTML2OsisMixin):
             title_tag = n.find('title', recursive=False)
             item.reference.string = title_tag.text if title_tag else n['osisID']
             root_list.append(item)
-            l = self._generate_toc(n, depth-1)
+            l = self._generate_toc(n, depth - 1)
             if l:
                 item.append(l)
         if root_list.contents:
@@ -448,10 +469,12 @@ class Articles(AbstractStudybible, HTML2OsisMixin):
         input_data = self.zip.read(fname)
         return BeautifulSoup(input_data, 'xml')
 
+
 class Convert(object):
     """
         Main class for study bible to SWORD module conversion
     """
+
     def __init__(self, options):
         options = dict_to_options(options)
         self.options = options
@@ -470,7 +493,7 @@ class Convert(object):
         self.options.setdefault('articles_work_id', articles_work_id)
         self.options.setdefault('articles_data_path', articles_data_path)
         self.options.setdefault('commentary_images_path', 'images/')
-        self.options.setdefault('articles_images_path', '../../../../%s/images/'%commentary_data_path)
+        self.options.setdefault('articles_images_path', '../../../../%s/images/' % commentary_data_path)
 
     def process_epub(self, epub_filename, output_filename=None):
         time_start = time.time()
@@ -507,10 +530,10 @@ class Convert(object):
         if self.options.osis:
             output_filename = output_filename or '%s.xml' % epub_filename.rsplit('.')[0]
             self.commentary.write_osis_file(output_filename)
-            self.articles.write_osis_file('articles_'+output_filename)
+            self.articles.write_osis_file('articles_' + output_filename)
 
         epub_zip.close()
-        logger.info('Processing took %.2f minutes', (time.time()-time_start)/60.)
+        logger.info('Processing took %.2f minutes', (time.time() - time_start) / 60.)
 
     def read_metadata(self, epub_zip):
         data = BeautifulSoup(epub_zip.read('OEBPS/content.opf'), 'xml').find('metadata')
@@ -523,6 +546,7 @@ class Convert(object):
 
     def make_sword_module(self, epub_zip, output_filename, input_dir):
         from study2osis import __version__
+
         logger.info('Making sword module')
 
         fd, bible_osis_filename = tempfile.mkstemp()
@@ -552,33 +576,35 @@ class Convert(object):
                 with open(image_fname_in_fs, 'w') as f:
                     f.write(epub_zip.open(image_fname_in_zip).read())
             else:
-                shutil.copyfile(os.path.join(*([input_dir]+IMAGE_DIRECTORY+[i])), os.path.join(image_path, i))
+                shutil.copyfile(os.path.join(*([input_dir] + IMAGE_DIRECTORY + [i])), os.path.join(image_path, i))
         # bible conf
-        conf_filename = os.path.join('mods.d', self.options.commentary_work_id.replace(' ', '_').lower()+'.conf')
+        conf_filename = os.path.join('mods.d', self.options.commentary_work_id.replace(' ', '_').lower() + '.conf')
         conf_str = jinja2.Template(codecs.open(BIBLE_CONF_TEMPLATE, 'r', 'utf-8').read()).render(
-                                                                commentary_work_id=self.options.commentary_work_id,
-                                                                commentary_data_path=self.options.commentary_data_path,
-                                                                filename=input_dir,
-                                                                revision=__version__,
-                                                                metadata=self.options.metadata,
-                                                                )
+            commentary_work_id=self.options.commentary_work_id,
+            commentary_data_path=self.options.commentary_data_path,
+            filename=input_dir,
+            revision=__version__,
+            metadata=self.options.metadata,
+        )
 
         with codecs.open(os.path.join(module_dir, conf_filename), 'w', 'utf-8') as f:
             f.write(conf_str)
 
         # articles conf
-        conf_filename = os.path.join('mods.d', self.options.articles_work_id.replace(' ', '_').lower()+'.conf')
+        conf_filename = os.path.join('mods.d', self.options.articles_work_id.replace(' ', '_').lower() + '.conf')
         conf_str = jinja2.Template(codecs.open(GENBOOK_CONF_TEMPLATE, 'r', 'utf-8').read()).render(
-                                                                articles_work_id=self.options.articles_work_id,
-                                                                articles_data_path=self.options.articles_data_path,
-                                                                filename=input_dir,
-                                                                revision=__version__,
-                                                                metadata=self.options.metadata,
-                                                                )
+            articles_work_id=self.options.articles_work_id,
+            articles_data_path=self.options.articles_data_path,
+            filename=input_dir,
+            revision=__version__,
+            metadata=self.options.metadata,
+        )
         with codecs.open(os.path.join(module_dir, conf_filename), 'w', 'utf-8') as f:
             f.write(conf_str)
 
-        process = subprocess.Popen(['osis2mod', commentary_save_path, bible_osis_filename, '-v', 'NRSV', '-z', '-b', '3'], stdout=subprocess.PIPE)
+        process = subprocess.Popen(
+            ['osis2mod', commentary_save_path, bible_osis_filename, '-v', 'NRSV', '-z', '-b', '3'],
+            stdout=subprocess.PIPE)
         process.communicate()
         process.wait()
         os.unlink(bible_osis_filename)
@@ -598,3 +624,34 @@ class Convert(object):
         shutil.rmtree(module_dir)
         logger.info('Sword module written in %s', zip_filename)
 
+
+def main():
+    parser = optparse.OptionParser(usage='Usage. %prog [options] directory_or_epub_file')
+    parser.add_option('--debug', action='store_true', dest='debug', default=False,
+                      help='Debug mode')
+    parser.add_option('--sword', action='store_true', dest='sword', default=False,
+                      help='Generate sword module. osis2mod anx xml2gbs from libsword-tools are needed.')
+    parser.add_option('--osis', action='store_true', dest='osis', default=False,
+                      help='Write OSIS files.')
+    parser.add_option('--no_nonadj', action='store_true', dest='no_nonadj', default=False,
+                      help='Do not create empty comments (with only links) for non-adjacent verse ranges')
+    parser.add_option('--bible_work_id', dest='bible_work_id', default='None',
+                      help='Bible work_id (verses are linked there). "None" -> no work_id specification')
+
+    options, args = parser.parse_args()
+    if len(args) == 1:
+        input_file = args[0]
+        if options.debug:
+            from ipdb import launch_ipdb_on_exception
+
+            with launch_ipdb_on_exception():
+                Convert(options).process_epub(input_file)
+        else:
+            Convert(options).process_epub(input_file)
+
+    else:
+        parser.print_help()
+
+
+if __name__ == '__main__':
+    main()

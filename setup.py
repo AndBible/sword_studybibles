@@ -1,4 +1,5 @@
 #!/usr/bin/env python
 
 import setuptools
-setuptools.setup(name='study2osis', version='1.0')
+from study2osis import __version__
+setuptools.setup(name='study2osis', version='%s'%__version__)

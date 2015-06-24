@@ -1,3 +1,3 @@
 __version__ = 5
 
-from .main import Convert
+from .main import Convert, main
