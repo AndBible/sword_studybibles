@@ -53,6 +53,7 @@ def dict_to_options(opts):
     default_options = dict(
         debug=False,
         sword=True,
+        osis=False,
         no_nonadj=False,
     )
     for key, value in default_options.iteritems():

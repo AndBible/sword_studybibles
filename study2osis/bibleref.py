@@ -17,8 +17,13 @@ def cached_refs(cls):
     instances = {}
 
     @wraps(cls)
-    def getinstance(ref_string):
-        assert ref_string
+    def getinstance(*args):
+        assert args
+        if len(args) == 1:
+            ref_string = args[0]
+        else:
+            ref_string = args
+
         if isinstance(ref_string, (list, tuple)):
             ref_string = '%s.%s.%s' % tuple(ref_string)
         if isinstance(ref_string, Ref.orig_cls):

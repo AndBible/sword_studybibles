@@ -1,8 +1,9 @@
+# encoding:utf-8
 """
     Copyright (C) 2015 Tuomas Airaksinen.
     See LICENCE.txt
 """
-from study2osis.html2osis import parse_studybible_reference
+from study2osis.html2osis import parse_studybible_reference, HTML2OsisMixin
 from study2osis.overlapping import find_subranges
 
 from study2osis.main import Commentary, Articles
@@ -202,6 +203,20 @@ def test_ref():
     assert Ref('Gen.50.25').next() == Ref('Gen.50.26')
     assert Ref('Gen.50.26').next() == Ref('Exod.1.1')
     assert list(xrefrange(Ref('Gen.1.1'), 'Gen.1.4')) == [Ref("Gen.1.1"), Ref("Gen.1.2"), Ref("Gen.1.3"), Ref("Gen.1.4")]
+    assert Ref('Rev', 1, 1) == Ref('Rev.1.1')
+
+def test_guess_range_end():
+    h = HTML2OsisMixin()
+    g = h._guess_range_end
+    c = lambda x: BeautifulSoup('<a>%s</a>'%x, 'xml').a
+    assert g(Ref('Gen.1.1'), c('1:1-3')) == Ref('Gen', 1, 3)
+    assert g(Ref('Isa.11.1'), c('Isa. 11:1-10')) == Ref('Isa.11.10')
+    assert g(Ref('Isa.11.1'), c('Isa. 11:1-12:10')) == Ref('Isa.12.10')
+    assert g(Ref('Isa.11.1'), c('11:1-12:10')) == Ref('Isa.12.10')
+    assert g(Ref('Isa.11.1'), c('Isa 11:1-10')) == Ref('Isa.11.10')
+    assert g(Ref('Isa.11.1'), c('Isa 11:1-12:10')) == Ref('Isa.12.10')
+    assert g(Ref('1Cor.3.16'), c('1 Cor. 3:16–17')) == Ref('1Cor.3.17')
+    assert g(Ref('1Cor.3.16'), c('vv. 16-17')) == Ref('1Cor.3.17')
 
 def test_find_subranges():
     orig_range = refrange('Gen.1.1', 'Gen.1.8')

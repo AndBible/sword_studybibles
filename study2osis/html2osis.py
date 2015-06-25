@@ -5,6 +5,7 @@
 """
 
 import logging
+import re
 
 from bs4 import NavigableString
 
@@ -69,27 +70,135 @@ class HTML2OsisMixin(object):
         HTML to OSIS fixes
     """
 
-    def _guess_range_end(self, ref, text):
+    def _guess_range_end(self, ref, link_tag):
         """
-            This is not an easy task to implement robustly, but at least some clear cases
-            could be done.
-
-            TODO.
-            Disabled for now.
+            This is not an easy task to implement robustly such that all cases are
+            handled, but at least certain clear cases can be easily done.
         """
-        return ref
+        tag_content = link_tag.text.strip().replace(u'–', '-')
 
-        range_dash = u'–'
-        if range_dash in text:
-            range_end = text.split(range_dash)[-1]
-            ref_ver = Ref(ref.split(' ')[0])
-            chap, book = ref_ver.chapter, ref_ver.book
-            if ':' in range_end:
-                chap, ver = range_end.split(':')
-            else:
-                ver = range_end.strip()
-            return '%s-%s.%s.%s' % (ref, book, chap, ver)
-        return ref
+        m = re.match(r'^(\d+)[a-e]$', tag_content) # '1', (must be verse)
+        if m:
+            return None
+
+        m = re.match(r'^(\d+)$', tag_content) # '1', can mean either chapter or verse
+        if m:
+            return None
+
+        m = re.match(r'^(Chapter|ch\.) (\d+)$', tag_content) # 'Chapter 1', 'ch. 1'
+        if m:
+            startchap, = (int(i) for i in m.groups()[1:])
+            assert startchap == ref.chapter
+            assert ref.verse == 1
+            return None
+
+
+        m = re.match(r'^(Chapters|chs\.) (\d+)-(\d+)$', tag_content) # 'chs. 1-2'
+        if m:
+            startchap, endchap = (int(i) for i in m.groups()[1:])
+            assert startchap == ref.chapter
+            assert ref.verse == 1
+            return None
+
+        m = re.match(r'^(\d+)-(\d+)$', tag_content) # '1-3', can mean either chapter or verse
+        if m:
+            return None
+
+        m = re.match(r'^(v\.|Verse) (\d+)[a-e]?$', tag_content) # 'v. 1'
+        if m:
+            startver, = (int(i) for i in m.groups()[1:])
+            assert startver == ref.verse
+            return None
+
+        m = re.match(r'^(\d+):(\d+)[a-e]?$', tag_content) # '1:1'
+        if m:
+            startchap, startver = (int(i) for i in  m.groups())
+            assert startchap == ref.chapter
+            assert startver == ref.verse
+            return None
+
+        m = re.match(r'^vv\.? (\d+)[a-e]?$', tag_content) # 'vv. 1'
+        if m:
+            startver, = (int(i) for i in  m.groups())
+            assert startver == ref.verse
+            return None
+
+        m = re.match(r'^vv\.? (\d+)[a-e]?-(\d+)[a-e]?$', tag_content) # 'vv. 1-3'
+        if m:
+            startver, endver = (int(i) for i in  m.groups())
+            assert startver == ref.verse
+            return Ref(ref.book, ref.chapter, endver)
+
+        m = re.match(r'^(\d+):(\d+)[a-e]?-(\d+)[a-e]?$', tag_content) # '1:1-3'
+        if m:
+            startchap, startver, endver = (int(i) for i in  m.groups())
+            assert startchap == ref.chapter
+            assert startver == ref.verse
+            return Ref(ref.book, ref.chapter, endver)
+
+        m = re.match(r'^(\d+):(\d+)[a-e]?-(\d+):(\d+)[a-e]?$', tag_content) # '11:1-12:10'
+        if m:
+            startchap, startver, endchap, endver = (int(i) for i in  m.groups())
+            assert startchap == ref.chapter
+            assert startver == ref.verse
+            return Ref(ref.book, endchap, endver)
+
+
+        m = re.match(r'^[\w \.]+ (\d+):(\d+)[a-e]?-(\d+)[a-e]?$', tag_content) # 'Isa. 11:1-10'
+        if m:
+            startchap, startver, endver = (int(i) for i in  m.groups())
+            assert startchap == ref.chapter
+            assert startver == ref.verse
+            return Ref(ref.book, ref.chapter, endver)
+
+        m = re.match(r'^[\w \.]+ (\d+):(\d+)[a-e]?-(\d+):(\d+)[a-e]?$', tag_content) # 'Isa. 11:1-12:10'
+        if m:
+            startchap, startver, endchap, endver = (int(i) for i in  m.groups())
+            assert startchap == ref.chapter
+            assert startver == ref.verse
+            return Ref(ref.book, endchap, endver)
+
+#        m = re.match(r'^(Philem|2 John|Jude) (\d+)$', tag_content) # 'Jude 1 (jude 1:1)
+#        if m:
+#            startver, = (int(i) for i in m.groups()[1:])
+#            assert startver == ref.verse
+#            return None
+#
+#        m = re.match(r'^[\w \.]+ (\d+):(\d+)[a-e]?$', tag_content) # 'Matt 1:1'
+#        if m:
+#            startchap, startver = (int(i) for i in  m.groups())
+#            assert startchap == ref.chapter
+#            assert startver == ref.verse
+#            return None
+#
+#        m = re.match(r'^([\w \.]+) (\d+)-(\d+)$', tag_content) # 'Matt. 1-2
+#        if m:
+#            startchap, endchap = (int(i) for i in m.groups()[1:])
+#            assert startchap == ref.chapter
+#            assert ref.verse == 1
+#            return None
+#
+#        m = re.match(r'^([\w \.]+) (\d+)$', tag_content) # 'Matt. 1
+#        if m:
+#            startchap, = (int(i) for i in m.groups()[1:])
+#            assert startchap == ref.chapter
+#            assert ref.verse == 1
+#            return None
+
+        # There are many other (not so common) cases too. Let's handle these more common ones only.
+        return None
+
+    def _try_to_get_range(self, ref, linktag):
+        endref = None
+        try:
+            endref = self._guess_range_end(ref, linktag)
+        except AssertionError as e:
+            logger.warning('Conflicting information in _guess_range_end(%s, %s): %s', ref, linktag.text, e)
+
+        if endref:
+            return '%s-%s'%(ref, endref)
+        else:
+            return '%s'%ref
 
     def _fix_bibleref_links(self, input_soup):
         for a in input_soup.find_all('a'):
@@ -105,7 +214,7 @@ class HTML2OsisMixin(object):
             ref = None
             if filename.endswith('text.xhtml'):
                 ref = parse_studybible_reference(verserange)
-                ref = self._guess_range_end(ref, a.text)
+                ref = self._try_to_get_range(Ref(ref), a)
                 if self.options.bible_work_id != 'None':
                     ref = '%s:%s' % (self.options.bible_work_id, ref)
 
@@ -314,7 +423,11 @@ class HTML2OsisMixin(object):
                 try:
                     ref = parse_studybible_reference(rootlevel_tag['id'])
                 except IllegalReference:
-                    logger.warning('NOT writing %s', rootlevel_tag)
+                    # let's silence this single warning about 'Studynotes for *' titles, one per bible book
+                    if rootlevel_tag['id'].endswith('-studynotes') and rootlevel_tag.attrs.get('wrap') and len(list(rootlevel_tag.find_all())) == 0:
+                        pass
+                    else:
+                        logger.warning('NOT writing %s', rootlevel_tag)
                     rootlevel_tag.extract()
                     continue
 
