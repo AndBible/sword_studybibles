@@ -71,6 +71,13 @@ class FixOverlappingVersesMixin(object):
         logger.info('... sort links')
         self._sort_links()
 
+    def create_new_reference_links_list(self):
+        links = self.root_soup.new_tag('list', cls='reference_links')
+        title = self.root_soup.new_tag('title')
+        title.string = 'See also'
+        links.append(title)
+        return links
+
     def _add_reference_link(self, comment, link_target_comment):
         def get_final_comment(com):
             if com.replaced_by:
@@ -85,10 +92,8 @@ class FixOverlappingVersesMixin(object):
             links = comment.find('list', cls='reference_links')
             if not links:
                 #links_div = self.root_soup.new_tag('div', type='paragraph', cls='reference_links')
-                links = self.root_soup.new_tag('list', cls='reference_links')
-                title = self.root_soup.new_tag('title')
-                title.string = 'See also'
-                links.append(title)
+                links = self.create_new_reference_links_list()
+
                 #links_div.append(links)
                 comment.append(links)
 
@@ -242,7 +247,8 @@ class FixOverlappingVersesMixin(object):
     def _sort_links(self):
         # Sort links
         for ref_links_list in self.osistext.find_all('list', cls='reference_links'):
-            sort_tag_content(ref_links_list, lambda x: Ref(x.reference['osisRef'].split(':')[1]))
+            ref_links_list.parent.append(ref_links_list.extract()) # make sure this list is last!
+            sort_tag_content(ref_links_list, lambda x: Ref(x.reference['osisRef']))
 
     def _create_empty_comment(self, verse):
         if isinstance(verse, (list, set)):

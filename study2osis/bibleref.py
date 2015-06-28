@@ -29,6 +29,8 @@ def cached_refs(cls):
         if isinstance(ref_string, Ref.orig_cls):
             return ref_string
         assert isinstance(ref_string, (str, unicode))
+        if ':' in ref_string:
+            ref_string = ref_string.split(':')[1]
         if ref_string not in instances:
             instances[ref_string] = cls(ref_string)
         return instances[ref_string]

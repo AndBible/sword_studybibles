@@ -197,6 +197,7 @@ def test_ref():
     assert '%s' % Ref('Gen.1.1') == 'Gen.1.1'
     assert '%s' % Ref('Jude.1.1') == 'Jude.1.1'
     assert Ref('Gen.1.1') == Ref('Gen.1.1')
+    assert Ref('SOMEBOOK:Gen.1.1') == Ref('Gen.1.1')
     assert Ref('Gen.1.1') in [Ref('Gen.1.1')]
     assert Ref('Gen.1.1') in {Ref('Gen.1.1'): 1}
     assert sorted([Ref('Gen.1.1'), Ref('Gen.2.1')]) == [Ref("Gen.1.1"), Ref("Gen.2.1")]

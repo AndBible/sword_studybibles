@@ -197,17 +197,24 @@ class Commentary(AbstractStudybible, HTML2OsisMixin, FixOverlappingVersesMixin):
             for p in body.find_all('p', class_='crossref', recursive=False):
                 p.extract()
                 verse = parse_studybible_reference(p.a.extract()['href'].split('#')[1])
-                target = self.osistext.find('div', annotateType='commentary', firstRef=verse, recursive=False)
+                target_comment = self.osistext.find('div', annotateType='commentary', firstRef=verse, recursive=False)
+
+
+                #target = target_comment.find('list')
                 #p = self.root_soup.new_tag('div', class_='paragraph')
-                p.name = 'div'
-                p['type'] = 'paragraph'
-                title = self.root_soup.new_tag('title')
-                title.string = 'Cross-references'
-                p.insert(0, title)
+                p.name = 'item'
+                #p['type'] = 'paragraph'
+                #title = self.root_soup.new_tag('title')
+                #title.string = 'Cross-references'
+                #p.insert(0, title)
                 self._all_fixes(p)
 
-                if target:
-                    target.append(p)
+                if target_comment:
+                    links = target_comment.find('list', cls='reference_links')
+                    if not links:
+                        links = self.create_new_reference_links_list()
+                        target_comment.append(links)
+                    links.append(p)
                 else:
                     new_div = self.root_soup.new_tag('div')
                     new_div['type'] = 'section'
@@ -215,7 +222,9 @@ class Commentary(AbstractStudybible, HTML2OsisMixin, FixOverlappingVersesMixin):
                     new_div['annotateRef'] = new_div['origRef'] = str(verse)
                     new_div['origFile'] = self.current_filename # FIXME??!
                     new_div.links = []
-                    new_div.append(p)
+                    links = self.create_new_reference_links_list()
+                    new_div.append(links)
+                    links.append(p)
                     self.osistext.append(new_div)
                     assert verse not in self.verse_comment_dict
                     self.verse_comment_dict[verse] = new_div
