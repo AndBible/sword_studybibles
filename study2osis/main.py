@@ -70,7 +70,7 @@ def fix_osis_id(osisid):
     return osisid.strip()
 
 
-class AbstractStudybible(object):
+class AbstractStudyBible(object):
     """
         Some common methods for Commentary and Articles
     """
@@ -122,7 +122,7 @@ class AbstractStudybible(object):
             linkmap[origref] = self._get_full_ref(t)
 
 
-class Commentary(AbstractStudybible, HTML2OsisMixin, FixOverlappingVersesMixin):
+class Commentary(AbstractStudyBible, HTML2OsisMixin, FixOverlappingVersesMixin):
     """
         Write commentary studynotes as OSIS xml that can be converted
         to SWORD commentary with osis2mod
@@ -231,7 +231,7 @@ class Commentary(AbstractStudybible, HTML2OsisMixin, FixOverlappingVersesMixin):
                         vl = self.verse_comments_all_dict[verse] = set()
                     vl.add(target_comment)
 
-class Articles(AbstractStudybible, HTML2OsisMixin):
+class Articles(AbstractStudyBible, HTML2OsisMixin):
     """
         Write articles & book introdcutions as OSIS xml that can be converted
         to SWORD genbook with xml2gbs
@@ -526,10 +526,17 @@ class Convert(object):
         Main class for study bible to SWORD module conversion
     """
 
-    def __init__(self, options):
+    def __init__(self, options, epub_filename):
         options = dict_to_options(options)
         self.options = options
         self.linkmap = {}
+
+        if not zipfile.is_zipfile(epub_filename):
+            raise Exception('Zip file assumed!')
+        self.epub_filename = epub_filename
+        self.epub_zip = zipfile.ZipFile(epub_filename)
+        self.options.metadata = self.read_metadata(self.epub_zip)
+        self.set_options()
 
     def set_options(self):
         self.options.setdefault('bible_work_id', 'None')
@@ -548,29 +555,22 @@ class Convert(object):
         self.options.setdefault('commentary_images_path', 'images/')
         self.options.setdefault('articles_images_path', '../../../../%s/images/' % commentary_data_path)
 
-    def process_epub(self, epub_filename, output_filename=None):
+    def process_epub(self, output_filename=None):
         """
              This is where everything is done.
         """
         time_start = time.time()
-        if not zipfile.is_zipfile(epub_filename):
-            raise Exception('Zip file assumed!')
-
-        epub_zip = zipfile.ZipFile(epub_filename)
-        self.options.metadata = self.read_metadata(epub_zip)
-        self.set_options()
-
         self.commentary = Commentary(self.options)
         self.articles = Articles(self.options, self.commentary.osistext)
 
-        self.commentary.read_studynotes(epub_zip)
+        self.commentary.read_studynotes(self.epub_zip)
 
-        self.articles.read_resources_from_epub(epub_zip)
+        self.articles.read_resources_from_epub(self.epub_zip)
 
         logger.info('Expand all ranges in commentaries')
         self.commentary.expand_all_ranges()
         if self.options.cross_references:
-            self.commentary.read_cross_references(epub_zip)
+            self.commentary.read_cross_references(self.epub_zip)
 
         self.commentary.fix_overlapping_ranges()
         self.commentary.collect_linkmap(self.linkmap)
@@ -586,14 +586,13 @@ class Convert(object):
         self.articles.clean_tags()
 
         if self.options.sword:
-            self.make_sword_module(epub_zip, output_filename, epub_filename)
+            self.make_sword_module(output_filename)
 
         if self.options.osis:
-            output_filename = output_filename or '%s.xml' % epub_filename.rsplit('.')[0]
+            output_filename = output_filename or '%s.xml' % self.epub_filename.rsplit('.')[0]
             self.commentary.write_osis_file(output_filename)
             self.articles.write_osis_file('articles_' + output_filename)
 
-        epub_zip.close()
         logger.info('Processing took %.2f minutes', (time.time() - time_start) / 60.)
 
     def read_metadata(self, epub_zip):
@@ -605,11 +604,10 @@ class Convert(object):
                 metadata[d.name] = txt
         return Options(metadata)
 
-    def make_sword_module(self, epub_zip, output_filename, input_dir):
+    def make_sword_module(self, output_filename):
         from study2osis import __version__
 
         logger.info('Making sword module')
-
         fd, bible_osis_filename = tempfile.mkstemp()
         temp = codecs.open(bible_osis_filename, 'w', 'utf-8')
         temp.write(unicode(self.commentary.root_soup))
@@ -633,20 +631,20 @@ class Convert(object):
             image_path = os.path.join(commentary_save_path, self.options.commentary_images_path)
             os.makedirs(image_path)
             for i in set(self.commentary.images + self.articles.images):
-                if epub_zip:
+                if self.epub_zip:
                     image_fname_in_zip = '/'.join(IMAGE_DIRECTORY + [i])
                     image_fname_in_fs = os.path.join(image_path, i)
                     with open(image_fname_in_fs, 'w') as f:
-                        f.write(epub_zip.open(image_fname_in_zip).read())
+                        f.write(self.epub_zip.open(image_fname_in_zip).read())
                 else:
-                    shutil.copyfile(os.path.join(*([input_dir] + IMAGE_DIRECTORY + [i])), os.path.join(image_path, i))
+                    shutil.copyfile(os.path.join(*([self.epub_filename] + IMAGE_DIRECTORY + [i])), os.path.join(image_path, i))
 
         # Bible conf
         conf_filename = os.path.join('mods.d', self.options.commentary_work_id.replace(' ', '_').lower() + '.conf')
         conf_str = jinja2.Template(codecs.open(BIBLE_CONF_TEMPLATE, 'r', 'utf-8').read()).render(
             commentary_work_id=self.options.commentary_work_id,
             commentary_data_path=self.options.commentary_data_path,
-            filename=input_dir,
+            filename=self.epub_filename,
             revision=__version__,
             metadata=self.options.metadata,
         )
@@ -659,7 +657,7 @@ class Convert(object):
         conf_str = jinja2.Template(codecs.open(GENBOOK_CONF_TEMPLATE, 'r', 'utf-8').read()).render(
             articles_work_id=self.options.articles_work_id,
             articles_data_path=self.options.articles_data_path,
-            filename=input_dir,
+            filename=self.epub_filename,
             revision=__version__,
             metadata=self.options.metadata,
         )
@@ -678,7 +676,7 @@ class Convert(object):
         process.wait()
         os.unlink(articles_osis_filename)
 
-        zip_filename = output_filename or '%s_module.zip' % input_dir.rsplit('.')[0]
+        zip_filename = output_filename or '%s_module.zip' % self.epub_filename.rsplit('.')[0]
         sword_zip = zipfile.ZipFile(zip_filename, 'w')
         for root, dirs, files in os.walk(module_dir):
             for file in files:
@@ -711,9 +709,9 @@ def main():
             from ipdb import launch_ipdb_on_exception
 
             with launch_ipdb_on_exception():
-                Convert(options).process_epub(input_file)
+                Convert(options, input_file).process_epub()
         else:
-            Convert(options).process_epub(input_file)
+            Convert(options, input_file).process_epub(input_file)
 
     else:
         parser.print_help()
