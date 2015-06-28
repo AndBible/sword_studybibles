@@ -139,6 +139,7 @@ class Commentary(AbstractStudybible, HTML2OsisMixin, FixOverlappingVersesMixin):
         self.verse_comments_firstref_dict = {}
         self.images = []
         self.link_map = {}
+        self.current_filename = ''
 
         template = jinja2.Template(open(COMMENTARY_TEMPLATE_XML).read())
         output_xml = BeautifulSoup(template.render(commentary_work_id=self.work_id, metadata=options.metadata), 'xml')
@@ -199,8 +200,7 @@ class Commentary(AbstractStudybible, HTML2OsisMixin, FixOverlappingVersesMixin):
             for p in body.find_all('p', class_='crossref', recursive=False):
                 p.extract()
                 verse = Ref(parse_studybible_reference(p.a.extract()['href'].split('#')[1]))
-                target_comment = self.osistext.find('div', firstRef=verse, recursive=False)
-                #target_comment = self.verse_comments_firstref_dict.get(verse)
+                target_comment = self.verse_comments_firstref_dict.get(verse)
                 p.name = 'item'
                 p.insert(0, self.root_soup.new_string('ESV: '))
                 self._all_fixes(p)
@@ -212,24 +212,28 @@ class Commentary(AbstractStudybible, HTML2OsisMixin, FixOverlappingVersesMixin):
                         target_comment.append(links)
                     links.append(p)
                 else:
-                    new_div = self.root_soup.new_tag('div')
-                    new_div['type'] = 'section'
-                    new_div['annotateType'] = 'commentary'
-                    new_div['annotateRef'] = new_div['origRef'] = str(verse)
-                    new_div['origFile'] = self.current_filename # FIXME??!
-                    new_div.links = []
+                    new_div = self._create_empty_comment(verse)
                     links = self.create_new_reference_links_list()
                     new_div.append(links)
                     links.append(p)
-                    self.osistext.append(new_div)
                     assert verse not in self.verse_comment_dict
+
+                    # find next verse that can be found
+                    n = verse
+                    try:
+                        while n not in self.verse_comments_firstref_dict:
+                            n = n.next()
+                        position = self.verse_comments_firstref_dict[n]
+                        position.insert_before(new_div)
+                    except n.LastVerse:
+                        self.osistext.append(new_div)
+
                     self.verse_comment_dict[verse] = new_div
                     self.verse_comments_firstref_dict[verse] = new_div
                     vl = self.verse_comments_all_dict.get(verse)
                     if not vl:
                         vl = self.verse_comments_all_dict[verse] = set()
                     vl.add(new_div)
-
 
 class Articles(AbstractStudybible, HTML2OsisMixin):
     """
@@ -700,7 +704,7 @@ def main():
     options, args = parser.parse_args()
     if len(args) == 1:
         input_file = args[0]
-        if options.debug:
+        if options.debug or True:
             from ipdb import launch_ipdb_on_exception
 
             with launch_ipdb_on_exception():

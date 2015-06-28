@@ -39,12 +39,13 @@ def cached_refs(cls):
     return getinstance
 
 
-class LastVerse(Exception):
-    pass
 
 
 @cached_refs
 class Ref(object):
+    class LastVerse(Exception):
+        pass
+
     def __init__(self, *args):
         ref_string, = args
         book, chap, verse = ref_string.split('.')
@@ -95,7 +96,7 @@ class Ref(object):
         elif self.book != 'Rev':
             return Ref('%s.%s.%s' % (BOOKREFS[self.book_int + 1], 1, 1))
         else:
-            raise LastVerse
+            raise self.LastVerse
 
     def iter(self):
         n = self
@@ -103,7 +104,7 @@ class Ref(object):
             yield n
             try:
                 n = n.next()
-            except LastVerse:
+            except self.LastVerse:
                 break
 
 
