@@ -331,8 +331,11 @@ class HTML2OsisMixin(object):
                     s['type'] = 'bold'
                 elif cls in ['good-king', 'mixture-king', 'bad-king', 'normal', 'smaller',
                              'hebrew', 'paleo-hebrew-unicode', 'major-prophet', 'minor-prophet',
-                             'footnote', 'crossref', 'contributor-country', 'time', None]:
+                             'footnote', 'crossref', 'contributor-country', 'time', 'crossref-verse', None]:
                     s['unwrap'] = '1'
+                elif cls in ['crossref-letter']:
+                    s.name = 'hi'
+                    s['type'] = 'super'
                 elif cls in ['underline']:
                     s.name = 'hi'
                     s['type'] = 'underline'
@@ -437,7 +440,7 @@ class HTML2OsisMixin(object):
                 new_div['type'] = 'section'
                 new_div['annotateType'] = 'commentary'
                 new_div['annotateRef'] = ref
-
+                new_div['origFile'] = rootlevel_tag['origFile']
                 rootlevel_tag.wrap(new_div)
             else:
                 if move_to_first_verse:

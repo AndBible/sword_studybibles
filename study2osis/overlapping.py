@@ -30,7 +30,7 @@ def find_subranges(orig_verses, actual_verses):
 
 
 def sort_tag_content(soup, key):
-    new_contents = [i.extract() for i in soup.find_all(recursive=False)]
+    new_contents = [i.extract() for i in soup.find_all('item', recursive=False)]
     new_contents.sort(key=key)
     for i in new_contents:
         soup.append(i)
@@ -61,8 +61,6 @@ class FixOverlappingVersesMixin(object):
 
         """
         logger.info('Fixing overlapping ranges')
-        logger.info('... expand all ranges')
-        self._expand_all_ranges()
         logger.info('... process overlapping verses')
         self._process_overlapping_verses()
         if not self.options.no_nonadj:
@@ -86,10 +84,13 @@ class FixOverlappingVersesMixin(object):
 
             links = comment.find('list', cls='reference_links')
             if not links:
-                links_div = self.root_soup.new_tag('div', type='paragraph', cls='reference_links')
-                comment.append(links_div)
+                #links_div = self.root_soup.new_tag('div', type='paragraph', cls='reference_links')
                 links = self.root_soup.new_tag('list', cls='reference_links')
-                links_div.append(links)
+                title = self.root_soup.new_tag('title')
+                title.string = 'See also'
+                links.append(title)
+                #links_div.append(links)
+                comment.append(links)
 
             link_item = self.root_soup.new_tag('item')
             links.append(link_item)
@@ -152,7 +153,7 @@ class FixOverlappingVersesMixin(object):
         prev_comment['origRef'] += ' ' + comment['origRef']
         prev_comment['annotateRef'] = ' '.join(str(i) for i in new_verses)
 
-    def _expand_all_ranges(self):
+    def expand_all_ranges(self):
         all_comments = self.osistext.find_all('div', annotateType='commentary', recursive=False)
 
         # first expand all ranges
@@ -162,6 +163,7 @@ class FixOverlappingVersesMixin(object):
             comment.replaced_by = None
 
             vs = expand_ranges(comment['annotateRef'], verses=True)
+            comment['firstRef'] = str(vs[0])
 
             # make figures and tables linked to some larger range: rest of this chapter as well as whole next chapter
             if comment.find(re.compile('(figure|table)')):
@@ -172,7 +174,7 @@ class FixOverlappingVersesMixin(object):
                 vs = sorted(set(vs + vs2))
 
             comment['annotateRef'] = ' '.join(str(i) for i in vs)
-            for v in verses(comment):
+            for v in vs: #verses(comment):
                 vl = self.verse_comments_all_dict.get(v)
                 if not vl:
                     vl = self.verse_comments_all_dict[v] = set()

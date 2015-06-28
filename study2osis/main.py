@@ -17,7 +17,7 @@ import optparse
 from bs4 import BeautifulSoup
 import jinja2
 
-from .html2osis import HTML2OsisMixin
+from .html2osis import HTML2OsisMixin, parse_studybible_reference
 from .overlapping import FixOverlappingVersesMixin, sort_tag_content
 
 HTML_DIRECTORY = ['OEBPS', 'Text']
@@ -178,6 +178,51 @@ class Commentary(AbstractStudybible, HTML2OsisMixin, FixOverlappingVersesMixin):
 
         self._adjust_studynotes()
         #     self._write_studynotes_into_osis(body)
+
+    def read_crossreferences(self, epub_zip):
+        crossref_files = [p for p in epub_zip.namelist() if p.endswith('crossrefs.xhtml')]
+        if not crossref_files:
+            raise Exception('No crossreference in zip file')
+
+        if self.options.debug:
+            crossref_files = crossref_files[:2]
+
+        logger.info('Reading crossreferences')
+        for fn in crossref_files:
+            logger.debug('Reading studynotes %s %s', crossref_files.index(fn), fn)
+            data_in = epub_zip.read(fn)
+            self.current_filename = fn
+
+            body = BeautifulSoup(data_in, 'xml').find('body')
+            for p in body.find_all('p', class_='crossref', recursive=False):
+                p.extract()
+                verse = parse_studybible_reference(p.a.extract()['href'].split('#')[1])
+                target = self.osistext.find('div', annotateType='commentary', firstRef=verse, recursive=False)
+                #p = self.root_soup.new_tag('div', class_='paragraph')
+                p.name = 'div'
+                p['type'] = 'paragraph'
+                title = self.root_soup.new_tag('title')
+                title.string = 'Cross-references'
+                p.insert(0, title)
+                self._all_fixes(p)
+
+                if target:
+                    target.append(p)
+                else:
+                    new_div = self.root_soup.new_tag('div')
+                    new_div['type'] = 'section'
+                    new_div['annotateType'] = 'commentary'
+                    new_div['annotateRef'] = new_div['origRef'] = str(verse)
+                    new_div['origFile'] = self.current_filename # FIXME??!
+                    new_div.links = []
+                    new_div.append(p)
+                    self.osistext.append(new_div)
+                    assert verse not in self.verse_comment_dict
+                    self.verse_comment_dict[verse] = new_div
+                    vl = self.verse_comments_all_dict.get(verse)
+                    if not vl:
+                        vl = self.verse_comments_all_dict[verse] = set()
+                    vl.add(new_div)
 
 
 class Articles(AbstractStudybible, HTML2OsisMixin):
@@ -511,6 +556,13 @@ class Convert(object):
         self.commentary.read_studynotes(epub_zip)
 
         self.articles.read_resources_from_epub(epub_zip)
+
+        logger.info('Expand all ranges in commentaries')
+        self.commentary.expand_all_ranges()
+
+        self.commentary.read_crossreferences(epub_zip)
+
+
 
         self.commentary.fix_overlapping_ranges()
         self.commentary.collect_linkmap(self.linkmap)

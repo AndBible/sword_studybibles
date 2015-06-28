@@ -20,7 +20,7 @@ def cached_refs(cls):
     def getinstance(*args):
         assert args
         if len(args) == 1:
-            ref_string = args[0]
+            ref_string, = args
         else:
             ref_string = args
 
@@ -43,7 +43,8 @@ class LastVerse(Exception):
 
 @cached_refs
 class Ref(object):
-    def __init__(self, ref_string):
+    def __init__(self, *args):
+        ref_string, = args
         book, chap, verse = ref_string.split('.')
         bookint = BOOKREFS.index(book)
         chapint = int(chap)

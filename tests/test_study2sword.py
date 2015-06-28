@@ -48,6 +48,7 @@ def test_overlapping_1():
     s = Commentary(options)
     s.root_soup = osistext
     s.osistext = osistext.find('osisText')
+    s.expand_all_ranges()
     s.fix_overlapping_ranges()
     result = osistext.prettify()
     print result
@@ -69,6 +70,7 @@ def test_merge_comments():
     s = Commentary(options)
     s.root_soup = osistext
     s.osistext = osistext.find('osisText')
+    s.expand_all_ranges()
     s.fix_overlapping_ranges()
     result = osistext.prettify()
     print result
@@ -91,6 +93,7 @@ def test_commentless_verse_within_rangecomment():
     s = Commentary(options)
     s.root_soup = osistext
     s.osistext = osistext.find('osisText')
+    s.expand_all_ranges()
     s.fix_overlapping_ranges()
     result = osistext.prettify()
     print result
@@ -112,6 +115,7 @@ def test_adjacent_verses():
     s = Commentary(options)
     s.root_soup = osistext
     s.osistext = osistext.find('osisText')
+    s.expand_all_ranges()
     s.fix_overlapping_ranges()
     result = osistext.prettify()
     print result
