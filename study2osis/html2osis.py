@@ -368,9 +368,12 @@ class HTML2OsisMixin(object):
     def _fix_figure_and_table(self, img_div):
         self._fix_table(img_div)
         for img in img_div.find_all('img'):
-            img.name = 'figure'
-            img['src'] = img['src'].replace('../Images/', self.images_path)
-            self.images.append(img['src'].split('/')[-1])
+            if self.options.images:
+                img.name = 'figure'
+                img['src'] = img['src'].replace('../Images/', self.images_path)
+                self.images.append(img['src'].split('/')[-1])
+            else:
+                img.replace_with('[figures disabled]')
 
     def _fix_fact(self, fact_div):
         for n in fact_div.find_all('h2'):

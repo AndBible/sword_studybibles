@@ -71,11 +71,12 @@ class FixOverlappingVersesMixin(object):
         logger.info('... sort links')
         self._sort_links()
 
-    def create_new_reference_links_list(self):
+    def create_new_reference_links_list(self, target):
         links = self.root_soup.new_tag('list', cls='reference_links')
         title = self.root_soup.new_tag('title')
         title.string = 'See also'
         links.append(title)
+        target.append(links)
         return links
 
     def _add_reference_link(self, comment, link_target_comment):
@@ -91,8 +92,7 @@ class FixOverlappingVersesMixin(object):
 
             links = comment.find('list', cls='reference_links')
             if not links:
-                links = self.create_new_reference_links_list()
-                comment.append(links)
+                links = self.create_new_reference_links_list(comment)
 
             link_item = self.root_soup.new_tag('item', comment_link='1')
             links.append(link_item)

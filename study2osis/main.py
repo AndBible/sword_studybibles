@@ -182,7 +182,7 @@ class Commentary(AbstractStudybible, HTML2OsisMixin, FixOverlappingVersesMixin):
 
         self._adjust_studynotes()
 
-    def read_crossreferences(self, epub_zip):
+    def read_cross_references(self, epub_zip):
         crossref_files = [p for p in epub_zip.namelist() if p.endswith('crossrefs.xhtml')]
         if not crossref_files:
             raise Exception('No crossreference in zip file')
@@ -208,13 +208,11 @@ class Commentary(AbstractStudybible, HTML2OsisMixin, FixOverlappingVersesMixin):
                 if target_comment:
                     links = target_comment.find('list', cls='reference_links')
                     if not links:
-                        links = self.create_new_reference_links_list()
-                        target_comment.append(links)
+                        links = self.create_new_reference_links_list(target_comment)
                     links.append(p)
                 else:
                     target_comment = self._create_empty_comment(verse)
-                    links = self.create_new_reference_links_list()
-                    target_comment.append(links)
+                    links = self.create_new_reference_links_list(target_comment)
                     links.append(p)
 
                     # We need to add this comment after all the other comments of this verse
@@ -541,6 +539,8 @@ class Convert(object):
         commentary_data_path = 'modules/comments/zcom/{wid}'.format(wid=commentary_work_id.replace(' ', '_'))
         articles_data_path = 'modules/genbook/rawgenbook/{wid}/{wid}'.format(wid=articles_work_id.replace(' ', '_'))
 
+        self.options.setdefault('images', True)
+        self.options.setdefault('cross_references', True)
         self.options.setdefault('commentary_work_id', commentary_work_id)
         self.options.setdefault('commentary_data_path', commentary_data_path)
         self.options.setdefault('articles_work_id', articles_work_id)
@@ -569,7 +569,8 @@ class Convert(object):
 
         logger.info('Expand all ranges in commentaries')
         self.commentary.expand_all_ranges()
-        self.commentary.read_crossreferences(epub_zip)
+        if self.options.cross_references:
+            self.commentary.read_cross_references(epub_zip)
 
         self.commentary.fix_overlapping_ranges()
         self.commentary.collect_linkmap(self.linkmap)
@@ -627,16 +628,18 @@ class Convert(object):
         os.makedirs(commentary_save_path)
         articles_save_path = os.path.join(module_dir, *self.options.articles_data_path.split('/'))
         os.makedirs(articles_save_path)
-        image_path = os.path.join(commentary_save_path, self.options.commentary_images_path)
-        os.makedirs(image_path)
-        for i in set(self.commentary.images + self.articles.images):
-            if epub_zip:
-                image_fname_in_zip = '/'.join(IMAGE_DIRECTORY + [i])
-                image_fname_in_fs = os.path.join(image_path, i)
-                with open(image_fname_in_fs, 'w') as f:
-                    f.write(epub_zip.open(image_fname_in_zip).read())
-            else:
-                shutil.copyfile(os.path.join(*([input_dir] + IMAGE_DIRECTORY + [i])), os.path.join(image_path, i))
+
+        if self.options.images:
+            image_path = os.path.join(commentary_save_path, self.options.commentary_images_path)
+            os.makedirs(image_path)
+            for i in set(self.commentary.images + self.articles.images):
+                if epub_zip:
+                    image_fname_in_zip = '/'.join(IMAGE_DIRECTORY + [i])
+                    image_fname_in_fs = os.path.join(image_path, i)
+                    with open(image_fname_in_fs, 'w') as f:
+                        f.write(epub_zip.open(image_fname_in_zip).read())
+                else:
+                    shutil.copyfile(os.path.join(*([input_dir] + IMAGE_DIRECTORY + [i])), os.path.join(image_path, i))
 
         # Bible conf
         conf_filename = os.path.join('mods.d', self.options.commentary_work_id.replace(' ', '_').lower() + '.conf')
@@ -690,6 +693,8 @@ def main():
     parser = optparse.OptionParser(usage='Usage. %prog [options] directory_or_epub_file')
     parser.add_option('--debug', action='store_true', dest='debug', default=False,
                       help='Debug mode')
+    parser.add_option('--no_images', action='store_false', dest='images', default=True,
+                      help='Disable images.')
     parser.add_option('--sword', action='store_true', dest='sword', default=False,
                       help='Generate sword module. osis2mod anx xml2gbs from libsword-tools are needed.')
     parser.add_option('--osis', action='store_true', dest='osis', default=False,
