@@ -134,7 +134,7 @@ class FixOverlappingVersesMixin(object):
 
         for tag in comment.children:
             tag['joined_from'] = comment['origRef']
-            prev_comment.append(tag)
+            prev_comment.append(tag.extract())
 
         new_verses = sorted(set(verses(comment) + verses(prev_comment)))
 
@@ -179,6 +179,7 @@ class FixOverlappingVersesMixin(object):
                 vs = sorted(set(vs + vs2))
 
             comment['annotateRef'] = ' '.join(str(i) for i in vs)
+            self.verse_comments_firstref_dict[vs[0]] = comment
             for v in vs: #verses(comment):
                 vl = self.verse_comments_all_dict.get(v)
                 if not vl:

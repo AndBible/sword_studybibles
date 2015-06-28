@@ -19,6 +19,7 @@ import jinja2
 
 from .html2osis import HTML2OsisMixin, parse_studybible_reference
 from .overlapping import FixOverlappingVersesMixin, sort_tag_content
+from study2osis.bibleref import Ref
 
 HTML_DIRECTORY = ['OEBPS', 'Text']
 IMAGE_DIRECTORY = ['OEBPS', 'Images']
@@ -135,6 +136,7 @@ class Commentary(AbstractStudybible, HTML2OsisMixin, FixOverlappingVersesMixin):
         self.work_id = options.commentary_work_id
         self.verse_comment_dict = {}
         self.verse_comments_all_dict = {}  # list of comments that appear on verses
+        self.verse_comments_firstref_dict = {}
         self.images = []
         self.link_map = {}
 
@@ -196,17 +198,11 @@ class Commentary(AbstractStudybible, HTML2OsisMixin, FixOverlappingVersesMixin):
             body = BeautifulSoup(data_in, 'xml').find('body')
             for p in body.find_all('p', class_='crossref', recursive=False):
                 p.extract()
-                verse = parse_studybible_reference(p.a.extract()['href'].split('#')[1])
-                target_comment = self.osistext.find('div', annotateType='commentary', firstRef=verse, recursive=False)
-
-
-                #target = target_comment.find('list')
-                #p = self.root_soup.new_tag('div', class_='paragraph')
+                verse = Ref(parse_studybible_reference(p.a.extract()['href'].split('#')[1]))
+                target_comment = self.osistext.find('div', firstRef=verse, recursive=False)
+                #target_comment = self.verse_comments_firstref_dict.get(verse)
                 p.name = 'item'
-                #p['type'] = 'paragraph'
-                #title = self.root_soup.new_tag('title')
-                #title.string = 'Cross-references'
-                #p.insert(0, title)
+                p.insert(0, self.root_soup.new_string('ESV: '))
                 self._all_fixes(p)
 
                 if target_comment:
@@ -228,6 +224,7 @@ class Commentary(AbstractStudybible, HTML2OsisMixin, FixOverlappingVersesMixin):
                     self.osistext.append(new_div)
                     assert verse not in self.verse_comment_dict
                     self.verse_comment_dict[verse] = new_div
+                    self.verse_comments_firstref_dict[verse] = new_div
                     vl = self.verse_comments_all_dict.get(verse)
                     if not vl:
                         vl = self.verse_comments_all_dict[verse] = set()
