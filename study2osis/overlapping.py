@@ -29,8 +29,8 @@ def find_subranges(orig_verses, actual_verses):
     return ranges
 
 
-def sort_tag_content(soup, key):
-    new_contents = [i.extract() for i in soup.find_all(recursive=False)]
+def sort_tag_content(soup, key, *args, **kwargs):
+    new_contents = [i.extract() for i in soup.find_all(*args, **kwargs)] # 'item', recursive=False)]
     new_contents.sort(key=key)
     for i in new_contents:
         soup.append(i)
@@ -61,8 +61,6 @@ class FixOverlappingVersesMixin(object):
 
         """
         logger.info('Fixing overlapping ranges')
-        logger.info('... expand all ranges')
-        self._expand_all_ranges()
         logger.info('... process overlapping verses')
         self._process_overlapping_verses()
         if not self.options.no_nonadj:
@@ -72,6 +70,13 @@ class FixOverlappingVersesMixin(object):
         self._add_reference_links_to_comments()
         logger.info('... sort links')
         self._sort_links()
+
+    def create_new_reference_links_list(self):
+        links = self.root_soup.new_tag('list', cls='reference_links')
+        title = self.root_soup.new_tag('title')
+        title.string = 'See also'
+        links.append(title)
+        return links
 
     def _add_reference_link(self, comment, link_target_comment):
         def get_final_comment(com):
@@ -86,16 +91,16 @@ class FixOverlappingVersesMixin(object):
 
             links = comment.find('list', cls='reference_links')
             if not links:
-                links_div = self.root_soup.new_tag('div', type='paragraph', cls='reference_links')
-                comment.append(links_div)
-                links = self.root_soup.new_tag('list', cls='reference_links')
-                links_div.append(links)
+                links = self.create_new_reference_links_list()
+                comment.append(links)
 
-            link_item = self.root_soup.new_tag('item')
+            link_item = self.root_soup.new_tag('item', comment_link='1')
             links.append(link_item)
             is_fig = False
             is_tab = False
-            length = LINK_MAX_LENGTH  # trying to keep lenght pretty short so that mobile phones would show only one line/link
+
+            # trying to keep lenght pretty short so that mobile phones would show only one line/link
+            length = LINK_MAX_LENGTH
             if link_target_comment.find('figure'):
                 length -= 3
                 is_fig = True
@@ -126,9 +131,9 @@ class FixOverlappingVersesMixin(object):
         comment['removed'] = 1
         comment.replaced_by = prev_comment
 
-        for tag in comment.children:
+        for tag in list(comment.children):
             tag['joined_from'] = comment['origRef']
-            prev_comment.append(tag)
+            prev_comment.append(tag.extract())
 
         new_verses = sorted(set(verses(comment) + verses(prev_comment)))
 
@@ -146,13 +151,15 @@ class FixOverlappingVersesMixin(object):
                 assert verses(existing_comment)[0] < new_verses[0]
                 verses_for_existing = verses(existing_comment)
                 verses_for_existing.remove(v)
-                existing_comment['annotateRef'] = references_to_string(verses_for_existing)
+                existing_comment['annotateRef'] = references_to_string(verses_for_existing, sort=False)
+                assert existing_comment['annotateRef']
                 self.verse_comment_dict[v] = prev_comment
 
         prev_comment['origRef'] += ' ' + comment['origRef']
         prev_comment['annotateRef'] = ' '.join(str(i) for i in new_verses)
+        assert prev_comment['annotateRef']
 
-    def _expand_all_ranges(self):
+    def expand_all_ranges(self):
         all_comments = self.osistext.find_all('div', annotateType='commentary', recursive=False)
 
         # first expand all ranges
@@ -162,6 +169,8 @@ class FixOverlappingVersesMixin(object):
             comment.replaced_by = None
 
             vs = expand_ranges(comment['annotateRef'], verses=True)
+            comment['firstRef'] = str(vs[0])
+            self.verse_comments_firstref_dict[vs[0]] = comment
 
             # make figures and tables linked to some larger range: rest of this chapter as well as whole next chapter
             if comment.find(re.compile('(figure|table)')):
@@ -172,7 +181,8 @@ class FixOverlappingVersesMixin(object):
                 vs = sorted(set(vs + vs2))
 
             comment['annotateRef'] = ' '.join(str(i) for i in vs)
-            for v in verses(comment):
+            assert comment['annotateRef']
+            for v in vs:
                 vl = self.verse_comments_all_dict.get(v)
                 if not vl:
                     vl = self.verse_comments_all_dict[v] = set()
@@ -186,11 +196,10 @@ class FixOverlappingVersesMixin(object):
                 continue
 
             comment_verses = verses(comment)
-            for v in comment_verses:
-                if v in self.verse_comment_dict:
-                    prev_comment = self.verse_comment_dict[v]
+            for v in copy(comment_verses):
+                prev_comment = self.verse_comment_dict.get(v)
+                if prev_comment:
                     verses_for_prev = verses(prev_comment)
-
                     if v == verses_for_prev[0] == comment_verses[0]:
                         self._merge_into_previous_comment(comment, prev_comment)
                         break
@@ -199,11 +208,14 @@ class FixOverlappingVersesMixin(object):
                         verses_for_prev.remove(v)
 
                     prev_comment['annotateRef'] = ' '.join(str(i) for i in verses_for_prev)
+                    assert prev_comment['annotateRef']
                     self.verse_comment_dict[v] = comment
 
                 else:
                     assert 'removed' not in comment.attrs
                     self.verse_comment_dict[v] = comment
+
+            comment['annotateRef'] = ' '.join(str(i) for i in comment_verses)
 
     def _create_empty_comments_for_nonadjancent_ranges(self):
         """
@@ -228,6 +240,7 @@ class FixOverlappingVersesMixin(object):
                 new_actual_verses -= set(rng)
                 comment.insert_after(empty_comment)
             comment['annotateRef'] = references_to_string(new_actual_verses)
+            assert comment['annotateRef']
 
     def _add_reference_links_to_comments(self):
         # Add 'see also' reference links to comments with larger range
@@ -240,7 +253,8 @@ class FixOverlappingVersesMixin(object):
     def _sort_links(self):
         # Sort links
         for ref_links_list in self.osistext.find_all('list', cls='reference_links'):
-            sort_tag_content(ref_links_list, lambda x: Ref(x.reference['osisRef'].split(':')[1]))
+            ref_links_list.parent.append(ref_links_list.extract()) # make sure this list is last
+            sort_tag_content(ref_links_list, lambda x: Ref(x.reference['osisRef']), 'item', comment_link=True)
 
     def _create_empty_comment(self, verse):
         if isinstance(verse, (list, set)):
@@ -251,5 +265,6 @@ class FixOverlappingVersesMixin(object):
                                          new_empty='1')
         comment.links = []
         comment['origRef'] = comment['annotateRef']
+        comment['origFile'] = self.current_filename
         comment.replaced_by = None
         return comment

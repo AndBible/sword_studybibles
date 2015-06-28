@@ -20,7 +20,7 @@ def cached_refs(cls):
     def getinstance(*args):
         assert args
         if len(args) == 1:
-            ref_string = args[0]
+            ref_string, = args
         else:
             ref_string = args
 
@@ -29,6 +29,8 @@ def cached_refs(cls):
         if isinstance(ref_string, Ref.orig_cls):
             return ref_string
         assert isinstance(ref_string, (str, unicode))
+        if ':' in ref_string:
+            ref_string = ref_string.split(':')[1]
         if ref_string not in instances:
             instances[ref_string] = cls(ref_string)
         return instances[ref_string]
@@ -37,13 +39,15 @@ def cached_refs(cls):
     return getinstance
 
 
-class LastVerse(Exception):
-    pass
 
 
 @cached_refs
 class Ref(object):
-    def __init__(self, ref_string):
+    class LastVerse(Exception):
+        pass
+
+    def __init__(self, *args):
+        ref_string, = args
         book, chap, verse = ref_string.split('.')
         bookint = BOOKREFS.index(book)
         chapint = int(chap)
@@ -92,7 +96,7 @@ class Ref(object):
         elif self.book != 'Rev':
             return Ref('%s.%s.%s' % (BOOKREFS[self.book_int + 1], 1, 1))
         else:
-            raise LastVerse
+            raise self.LastVerse
 
     def iter(self):
         n = self
@@ -100,7 +104,7 @@ class Ref(object):
             yield n
             try:
                 n = n.next()
-            except LastVerse:
+            except self.LastVerse:
                 break
 
 
@@ -125,8 +129,11 @@ def refrange(start, stop):
     return list(xrefrange(start, stop))
 
 
-def references_to_string(vs):
-    return ' '.join(str(i) for i in sorted(vs))
+def references_to_string(vs, sort=True):
+    if sort:
+        return ' '.join(str(i) for i in sorted(vs))
+    else:
+        return ' '.join(str(i) for i in vs)
 
 
 def first_reference(ref):

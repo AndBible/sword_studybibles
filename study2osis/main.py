@@ -17,8 +17,9 @@ import optparse
 from bs4 import BeautifulSoup
 import jinja2
 
-from .html2osis import HTML2OsisMixin
+from .html2osis import HTML2OsisMixin, parse_studybible_reference
 from .overlapping import FixOverlappingVersesMixin, sort_tag_content
+from .bibleref import Ref
 
 HTML_DIRECTORY = ['OEBPS', 'Text']
 IMAGE_DIRECTORY = ['OEBPS', 'Images']
@@ -135,8 +136,11 @@ class Commentary(AbstractStudybible, HTML2OsisMixin, FixOverlappingVersesMixin):
         self.work_id = options.commentary_work_id
         self.verse_comment_dict = {}
         self.verse_comments_all_dict = {}  # list of comments that appear on verses
+        # this mapping is used only for pushing crossrefs into comments in .read_crossreferences
+        self.verse_comments_firstref_dict = {}
         self.images = []
         self.link_map = {}
+        self.current_filename = ''
 
         template = jinja2.Template(open(COMMENTARY_TEMPLATE_XML).read())
         output_xml = BeautifulSoup(template.render(commentary_work_id=self.work_id, metadata=options.metadata), 'xml')
@@ -177,8 +181,57 @@ class Commentary(AbstractStudybible, HTML2OsisMixin, FixOverlappingVersesMixin):
                 self.osistext.append(i.extract())
 
         self._adjust_studynotes()
-        #     self._write_studynotes_into_osis(body)
 
+    def read_crossreferences(self, epub_zip):
+        crossref_files = [p for p in epub_zip.namelist() if p.endswith('crossrefs.xhtml')]
+        if not crossref_files:
+            raise Exception('No crossreference in zip file')
+
+        if self.options.debug:
+            crossref_files = crossref_files[:2]
+
+        logger.info('Reading crossreferences')
+        for fn in crossref_files:
+            logger.debug('Reading studynotes %s %s', crossref_files.index(fn), fn)
+            data_in = epub_zip.read(fn)
+            self.current_filename = fn
+
+            body = BeautifulSoup(data_in, 'xml').find('body')
+            for p in body.find_all('p', class_='crossref', recursive=False):
+                p.extract()
+                verse = Ref(parse_studybible_reference(p.a.extract()['href'].split('#')[1]))
+                target_comment = self.verse_comments_firstref_dict.get(verse)
+                p.name = 'item'
+                p.insert(0, self.root_soup.new_string('ESV: '))
+                self._all_fixes(p)
+
+                if target_comment:
+                    links = target_comment.find('list', cls='reference_links')
+                    if not links:
+                        links = self.create_new_reference_links_list()
+                        target_comment.append(links)
+                    links.append(p)
+                else:
+                    target_comment = self._create_empty_comment(verse)
+                    links = self.create_new_reference_links_list()
+                    target_comment.append(links)
+                    links.append(p)
+
+                    # We need to add this comment after all the other comments of this verse
+                    n = verse
+                    try:
+                        while n not in self.verse_comments_firstref_dict:
+                            n = n.next()
+                        position = self.verse_comments_firstref_dict[n]
+                        position.insert_before(target_comment)
+                    except n.LastVerse:
+                        self.osistext.append(target_comment)
+
+                    self.verse_comments_firstref_dict[verse] = target_comment
+                    vl = self.verse_comments_all_dict.get(verse)
+                    if not vl:
+                        vl = self.verse_comments_all_dict[verse] = set()
+                    vl.add(target_comment)
 
 class Articles(AbstractStudybible, HTML2OsisMixin):
     """
@@ -232,7 +285,7 @@ class Articles(AbstractStudybible, HTML2OsisMixin):
             target.append(bs)
 
     def read_resources_from_epub(self, epub_zip):
-        self.zip = epub_zip
+        self.zip = epub_zip  # TODO check if this is used?
 
         logger.info('Reading articles')
         soup = self._give_soup(os.path.join(self.path, 'toc.xhtml'))
@@ -258,7 +311,6 @@ class Articles(AbstractStudybible, HTML2OsisMixin):
 
         for pt in self.root_soup.find_all('div', type='section'):
             pt['osisID'] = fix_osis_id(pt.title.text)
-            # pt['osisID'] = '- ' + self.fix_osis_id(pt.title.text)
 
     def post_process(self):
         logger.info('Postprosessing resources')
@@ -497,6 +549,9 @@ class Convert(object):
         self.options.setdefault('articles_images_path', '../../../../%s/images/' % commentary_data_path)
 
     def process_epub(self, epub_filename, output_filename=None):
+        """
+             This is where everything is done.
+        """
         time_start = time.time()
         if not zipfile.is_zipfile(epub_filename):
             raise Exception('Zip file assumed!')
@@ -511,6 +566,10 @@ class Convert(object):
         self.commentary.read_studynotes(epub_zip)
 
         self.articles.read_resources_from_epub(epub_zip)
+
+        logger.info('Expand all ranges in commentaries')
+        self.commentary.expand_all_ranges()
+        self.commentary.read_crossreferences(epub_zip)
 
         self.commentary.fix_overlapping_ranges()
         self.commentary.collect_linkmap(self.linkmap)
@@ -578,7 +637,8 @@ class Convert(object):
                     f.write(epub_zip.open(image_fname_in_zip).read())
             else:
                 shutil.copyfile(os.path.join(*([input_dir] + IMAGE_DIRECTORY + [i])), os.path.join(image_path, i))
-        # bible conf
+
+        # Bible conf
         conf_filename = os.path.join('mods.d', self.options.commentary_work_id.replace(' ', '_').lower() + '.conf')
         conf_str = jinja2.Template(codecs.open(BIBLE_CONF_TEMPLATE, 'r', 'utf-8').read()).render(
             commentary_work_id=self.options.commentary_work_id,
@@ -591,7 +651,7 @@ class Convert(object):
         with codecs.open(os.path.join(module_dir, conf_filename), 'w', 'utf-8') as f:
             f.write(conf_str)
 
-        # articles conf
+        # Articles+resources conf
         conf_filename = os.path.join('mods.d', self.options.articles_work_id.replace(' ', '_').lower() + '.conf')
         conf_str = jinja2.Template(codecs.open(GENBOOK_CONF_TEMPLATE, 'r', 'utf-8').read()).render(
             articles_work_id=self.options.articles_work_id,
@@ -642,7 +702,7 @@ def main():
     options, args = parser.parse_args()
     if len(args) == 1:
         input_file = args[0]
-        if options.debug:
+        if options.debug or True:
             from ipdb import launch_ipdb_on_exception
 
             with launch_ipdb_on_exception():
