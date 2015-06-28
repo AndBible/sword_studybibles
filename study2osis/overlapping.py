@@ -201,15 +201,15 @@ class FixOverlappingVersesMixin(object):
             comment_verses = verses(comment)
             for v in copy(comment_verses):
                 prev_comment = self.verse_comment_dict.get(v)
+                #if prev_comment:
+
+                #if prev_comment and prev_comment.attrs.get('new_empty'):
+                #    self.verse_comment_dict[v] = comment
+                    #if comment_verses[0] != verses_for_prev[0]:  # remove verse if these will not be merged later
+                    #    comment_verses.remove(v)
+
                 if prev_comment:
                     verses_for_prev = verses(prev_comment)
-
-                if prev_comment and prev_comment.attrs.get('new_empty'):
-                    self.verse_comment_dict[v] = comment
-                    if comment_verses[0] != verses_for_prev[0]:  # remove verse if these will not be merged later
-                        comment_verses.remove(v)
-
-                elif prev_comment:
                     if v == verses_for_prev[0] == comment_verses[0]:
                         self._merge_into_previous_comment(comment, prev_comment)
                         break
