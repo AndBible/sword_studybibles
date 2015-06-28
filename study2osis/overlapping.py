@@ -147,12 +147,14 @@ class FixOverlappingVersesMixin(object):
                 pass
             elif existing_comment == comment:
                 self.verse_comment_dict[v] = prev_comment
+            #elif existing_comment.attrs.get('new_empty'):
+            #    pass
             else:
                 # some earlier, merged comment
                 assert verses(existing_comment)[0] < new_verses[0]
                 verses_for_existing = verses(existing_comment)
                 verses_for_existing.remove(v)
-                existing_comment['annotateRef'] = references_to_string(verses_for_existing)
+                existing_comment['annotateRef'] = references_to_string(verses_for_existing, sort=False)
                 assert existing_comment['annotateRef']
                 self.verse_comment_dict[v] = prev_comment
 
@@ -197,11 +199,17 @@ class FixOverlappingVersesMixin(object):
                 continue
 
             comment_verses = verses(comment)
-            for v in comment_verses:
+            for v in copy(comment_verses):
                 prev_comment = self.verse_comment_dict.get(v)
-                if prev_comment and not prev_comment.attrs.get('new_empty'):
+                if prev_comment:
                     verses_for_prev = verses(prev_comment)
 
+                if prev_comment and prev_comment.attrs.get('new_empty'):
+                    self.verse_comment_dict[v] = comment
+                    if comment_verses[0] != verses_for_prev[0]:  # remove verse if these will not be merged later
+                        comment_verses.remove(v)
+
+                elif prev_comment:
                     if v == verses_for_prev[0] == comment_verses[0]:
                         self._merge_into_previous_comment(comment, prev_comment)
                         break
@@ -216,6 +224,8 @@ class FixOverlappingVersesMixin(object):
                 else:
                     assert 'removed' not in comment.attrs
                     self.verse_comment_dict[v] = comment
+
+            comment['annotateRef'] = ' '.join(str(i) for i in comment_verses)
 
     def _create_empty_comments_for_nonadjancent_ranges(self):
         """

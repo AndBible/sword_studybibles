@@ -129,8 +129,11 @@ def refrange(start, stop):
     return list(xrefrange(start, stop))
 
 
-def references_to_string(vs):
-    return ' '.join(str(i) for i in sorted(vs))
+def references_to_string(vs, sort=True):
+    if sort:
+        return ' '.join(str(i) for i in sorted(vs))
+    else:
+        return ' '.join(str(i) for i in vs)
 
 
 def first_reference(ref):
