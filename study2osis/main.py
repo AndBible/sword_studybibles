@@ -87,7 +87,7 @@ class AbstractStudyBible(object):
         for t in self.osistext.find_all():
             for a in t.attrs.keys():
                 if a not in ['osisID', 'type', 'src', 'role', 'osisRef', 'osisWork', 'href', 'annotateRef',
-                             'annotateType']:
+                             'annotateType', 'level']:
                     attrs.add(a)
                     del t[a]
         logger.info('Removed attributes: %s', ', '.join(attrs))
