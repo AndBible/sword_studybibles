@@ -132,7 +132,6 @@ class FixOverlappingVersesMixin(object):
         comment.replaced_by = prev_comment
 
         for tag in list(comment.children):
-            tag['joined_from'] = comment['origRef']
             prev_comment.append(tag.extract())
 
         new_verses = sorted(set(verses(comment) + verses(prev_comment)))
@@ -160,7 +159,7 @@ class FixOverlappingVersesMixin(object):
         assert prev_comment['annotateRef']
 
     def expand_all_ranges(self):
-        all_comments = self.osistext.find_all('div', annotateType='commentary', recursive=False)
+        all_comments = self.osistext.find_all('div', annotateType='commentary')
 
         # first expand all ranges
         for comment in all_comments:
@@ -189,7 +188,7 @@ class FixOverlappingVersesMixin(object):
                 vl.add(comment)
 
     def _process_overlapping_verses(self):
-        all_comments = self.osistext.find_all('div', annotateType='commentary', recursive=False)
+        all_comments = self.osistext.find_all('div', annotateType='commentary')
         for comment in all_comments:
             if 'removed' in comment.attrs:
                 # this comment has been merged earlier
@@ -226,7 +225,7 @@ class FixOverlappingVersesMixin(object):
                     Step is optional -- if we leave this step, then those verses will be linked
             to the original verse in its range
         """
-        all_comments = self.osistext.find_all('div', annotateType='commentary', recursive=False)
+        all_comments = self.osistext.find_all('div', annotateType='commentary')
         for comment in all_comments:
             orig_verses = expand_ranges(comment['origRef'], verses=True)
             actual_verses = verses(comment)
