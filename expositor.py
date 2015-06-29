@@ -12,9 +12,8 @@ from bs4 import BeautifulSoup
 osistext = BeautifulSoup(open('expositor2.xml').read(), 'xml')
 
 class options:
-    title = 'ESVN'
-    commentary_work_id = 'ESVN'
-    articles_work_id = 'ESVN'
+    title = 'EXP'
+    commentary_work_id = 'EXP'
     commentary_images_path = ''
     articles_images_path = ''
     no_nonadj = False
