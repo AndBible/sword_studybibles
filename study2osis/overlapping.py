@@ -168,6 +168,7 @@ class FixOverlappingVersesMixin(object):
             comment.replaced_by = None
 
             vs = expand_ranges(comment['annotateRef'], verses=True)
+            comment.expanded_verses = vs
             comment['firstRef'] = str(vs[0])
             self.verse_comments_firstref_dict[vs[0]] = comment
 
