@@ -180,6 +180,7 @@ class FixOverlappingVersesMixin(object):
                 vs2 = expand_ranges('%s-%s' % (first, last), verses=True)
                 vs = sorted(set(vs + vs2))
 
+            comment.orig_expanded = vs
             comment['annotateRef'] = ' '.join(str(i) for i in vs)
             assert comment['annotateRef']
             for v in vs:
@@ -228,7 +229,7 @@ class FixOverlappingVersesMixin(object):
         """
         all_comments = self.osistext.find_all('div', annotateType='commentary', recursive=False)
         for comment in all_comments:
-            orig_verses = expand_ranges(comment['origRef'], verses=True)
+            orig_verses = comment.orig_expanded
             actual_verses = verses(comment)
             new_actual_verses = set(copy(actual_verses))
 
@@ -256,15 +257,16 @@ class FixOverlappingVersesMixin(object):
             ref_links_list.parent.append(ref_links_list.extract()) # make sure this list is last
             sort_tag_content(ref_links_list, lambda x: Ref(x.reference['osisRef']), 'item', comment_link=True)
 
-    def _create_empty_comment(self, verse):
-        if isinstance(verse, (list, set)):
-            verse = references_to_string(verse)
-        verse = str(verse)
+    def _create_empty_comment(self, verses):
+        if isinstance(verses, (list, set)):
+            verses = references_to_string(verses)
+        verses = str(verses)
 
-        comment = self.root_soup.new_tag('div', annotateType='commentary', type='section', annotateRef=verse,
+        comment = self.root_soup.new_tag('div', annotateType='commentary', type='section', annotateRef=verses,
                                          new_empty='1')
         comment.links = []
         comment['origRef'] = comment['annotateRef']
+        comment.orig_expanded = expand_ranges(verses, verses=True)
         comment['origFile'] = self.current_filename
         comment.replaced_by = None
         return comment

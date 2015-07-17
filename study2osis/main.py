@@ -107,7 +107,7 @@ class AbstractStudyBible(object):
         """
             Collect mapping from HTML ids to osisRefs
         """
-        logger.info('Collecting linkmap from studynotes')
+        logger.info('Collecting linkmap (%s)', self.__class__.__name__)
         for t in self.osistext.find_all(id=True):
             id = t['id']
             if 'origFile' in t.attrs:
