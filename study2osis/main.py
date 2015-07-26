@@ -302,10 +302,11 @@ class Articles(AbstractStudyBible, HTML2OsisMixin):
 
         # do not split sections in short articles
         # TODO: make optional
-        for c in self.root_soup.find_all('div', type='chapter'):
-            if len(c.text) < 20000:
-                for pt in c.find_all('div', type='section'):
-                    pt.unwrap()
+        # if self.options.do_not_split_short_articles:
+        #     for c in self.root_soup.find_all('div', type='chapter'):
+        #         if len(c.text) < 20000:
+        #             for pt in c.find_all('div', type='section'):
+        #                 pt.unwrap()
 
         for pt in self.root_soup.find_all('div', type='section'):
             pt['osisID'] = fix_osis_id(pt.title.text)
