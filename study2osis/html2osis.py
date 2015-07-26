@@ -220,7 +220,7 @@ class HTML2OsisMixin(object):
 
             elif filename.endswith('studynotes.xhtml'):
                 try:
-                    ref = '%s:%s' % (self.work_id, parse_studybible_reference(verserange))
+                    ref = '%s:%s' % (self.options.commentary_work_id, parse_studybible_reference(verserange))
                 except IllegalReference:
                     a['postpone'] = '1'
                     a['origRef'] = a['href']
@@ -259,7 +259,6 @@ class HTML2OsisMixin(object):
                 else:
                     s.replace_with(s.text)
                     logger.error('still some unhandled small %s', s)
-
 
             # replace bolded strings
             elif s.name == 'strong':
