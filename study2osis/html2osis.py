@@ -348,7 +348,41 @@ class HTML2OsisMixin(object):
             if len(s) == 0:
                 s.extract()
 
+    def fix_table_rowspan(self, table):
+        """
+            Replaces rowspan=n with empty <td>'s in HTML table
+        """
+        for td in table.find_all('td', rowspan=True):
+            rowspan = int(td['rowspan'])
+            del td.attrs['rowspan']
+            par_tr = td.parent
+            idx = len(td.find_previous_siblings('td'))
+            count = 1
+            for tr in par_tr.find_next_siblings('tr'):
+                n_td = self.root_soup.new_tag('td', add=1)
+                n_td.string = ' '
+                tr.insert(idx,n_td)
+                count += 1
+                if count > rowspan - 1:
+                    break
+
+    def fix_table_colspan(self, table):
+        """
+            Replaces colspan=n with empty <td>'s in HTML table
+        """
+        for td in table.find_all('td', colspan=True):
+            colspan = int(td['colspan'])
+            del td.attrs['colspan']
+            for i in xrange(colspan-1):
+                n_td = self.root_soup.new_tag('td', add=1)
+                n_td.string = ' '
+                td.insert_after(n_td)
+
+
     def _fix_table(self, table_div):
+        self.fix_table_colspan(table_div)
+        self.fix_table_rowspan(table_div)
+
         for n in table_div.find_all('tr'):
             n.name = 'row'
         for n in table_div.find_all('th'):

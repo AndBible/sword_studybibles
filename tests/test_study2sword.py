@@ -166,6 +166,42 @@ def test_genbook2():
     print repr(result)
     assert result == u'<?xml version="1.0" encoding="utf-8"?>\n<osis xmlns="http://www.bibletechnologies.net/2003/OSIS/namespace" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.bibletechnologies.net/2003/OSIS/namespace http://www.bibletechnologies.net/osisCore.2.1.1.xsd">\n<osisText osisIDWork="ESVN" osisRefWork="book" xml:lang="en">\n<header>\n<work osisWork="ESVN">\n<title/>\n<creator role="aut"/>\n<identifier type="OSIS">ESVN</identifier>\n<refSystem>Bible.NRSV</refSystem>\n</work>\n</header>\n<div osisID="Book introductions" type="book"/><div osisID="Articles" type="book"/><div osisID="Uncategorized resources" type="book"/></osisText>\n</osis>'
 
+def test_colspan():
+    osistext = BeautifulSoup("""<body><table><tr><td colspan="3">test</td></tr></table></body>""", 'xml')
+    result = BeautifulSoup("""<body><table><tr><td>test</td><td add="1"/><td add="1"/></table></body>""", 'xml')
+
+    s = Articles(options, None)
+    s.fix_table_colspan(osistext.find('body'))
+    assert unicode(osistext) == unicode(result)
+
+import pytest
+@pytest.mark.parametrize('osistext,result',[
+                    (
+                    """<body><table><tr><td rowspan="2">test</td><td/></tr><tr><td/></tr><tr><td/></tr></table></body>""",
+                    """<body><table><tr><td>test</td><td/></tr><tr><td add="1"/><td/></tr><tr><td/></tr></table></body>"""
+                     ),
+                    (
+                    """<body><table><tr><td/><td rowspan="2">test</td><td/></tr><tr><td/><td/></tr><tr><td/><td/></tr></table></body>""",
+                    """<body><table><tr><td/><td>test</td><td/></tr><tr><td/><td add="1"/><td/></tr><tr><td/><td/></tr></table></body>"""
+                     ),
+                    (
+                    """<body><table><tr><td/><td rowspan="3">test</td><td/></tr><tr><td/><td/></tr><tr><td/><td/></tr></table></body>""",
+                    """<body><table><tr><td/><td>test</td><td/></tr><tr><td/><td add="1"/><td/></tr><tr><td/><td add="1"/><td/></tr></table></body>"""
+                     ),
+                    (
+                    """<body><table><tr><td/> <td rowspan="3">test</td><td/>asdf</tr><tr><td/><td/></tr><tr><td/><td/></tr></table></body>""",
+                    """<body><table><tr><td/> <td>test</td><td/>asdf</tr><tr><td/><td add="1"/><td/></tr><tr><td/><td add="1"/><td/></tr></table></body>"""
+                     ),
+
+                    ])
+def test_rowspan(osistext, result):
+    osistext_ = BeautifulSoup(osistext, 'xml')
+    result__ = BeautifulSoup(result, 'xml')
+
+    s = Articles(options, None)
+    s.fix_table_rowspan(osistext_.find('body'))
+    assert unicode(osistext_) == unicode(result__)
+
 def test_expand_ranges():
     assert expand_ranges("Gen.2.4-Gen.2.6") == "Gen.2.4 Gen.2.5 Gen.2.6"
     assert expand_ranges("Gen.1.30-Gen.2.1") == "Gen.1.30 Gen.1.31 Gen.2.1"
