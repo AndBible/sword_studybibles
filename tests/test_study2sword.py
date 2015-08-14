@@ -168,7 +168,7 @@ def test_genbook2():
 
 def test_colspan():
     osistext = BeautifulSoup("""<body><table><tr><td colspan="3">test</td></tr></table></body>""", 'xml')
-    result = BeautifulSoup("""<body><table><tr><td>test</td><td add="1"/><td add="1"/></table></body>""", 'xml')
+    result = BeautifulSoup("""<body><table><tr><td>test</td><td add="1"> </td><td add="1"> </td></table></body>""", 'xml')
 
     s = Articles(options, None)
     s.fix_table_colspan(osistext.find('body'))
@@ -178,19 +178,19 @@ import pytest
 @pytest.mark.parametrize('osistext,result',[
                     (
                     """<body><table><tr><td rowspan="2">test</td><td/></tr><tr><td/></tr><tr><td/></tr></table></body>""",
-                    """<body><table><tr><td>test</td><td/></tr><tr><td add="1"/><td/></tr><tr><td/></tr></table></body>"""
+                    """<body><table><tr><td>test</td><td/></tr><tr><td add="1"> </td><td/></tr><tr><td/></tr></table></body>"""
                      ),
                     (
                     """<body><table><tr><td/><td rowspan="2">test</td><td/></tr><tr><td/><td/></tr><tr><td/><td/></tr></table></body>""",
-                    """<body><table><tr><td/><td>test</td><td/></tr><tr><td/><td add="1"/><td/></tr><tr><td/><td/></tr></table></body>"""
+                    """<body><table><tr><td/><td>test</td><td/></tr><tr><td/><td add="1"> </td><td/></tr><tr><td/><td/></tr></table></body>"""
                      ),
                     (
                     """<body><table><tr><td/><td rowspan="3">test</td><td/></tr><tr><td/><td/></tr><tr><td/><td/></tr></table></body>""",
-                    """<body><table><tr><td/><td>test</td><td/></tr><tr><td/><td add="1"/><td/></tr><tr><td/><td add="1"/><td/></tr></table></body>"""
+                    """<body><table><tr><td/><td>test</td><td/></tr><tr><td/><td add="1"> </td><td/></tr><tr><td/><td add="1"> </td><td/></tr></table></body>"""
                      ),
                     (
                     """<body><table><tr><td/> <td rowspan="3">test</td><td/>asdf</tr><tr><td/><td/></tr><tr><td/><td/></tr></table></body>""",
-                    """<body><table><tr><td/> <td>test</td><td/>asdf</tr><tr><td/><td add="1"/><td/></tr><tr><td/><td add="1"/><td/></tr></table></body>"""
+                    """<body><table><tr><td/> <td>test</td><td/>asdf</tr><tr><td/><td add="1"> </td><td/></tr><tr><td/><td add="1"> </td><td/></tr></table></body>"""
                      ),
 
                     ])
