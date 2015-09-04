@@ -175,8 +175,9 @@ class FixOverlappingVersesMixin(object):
             # make figures and tables linked to some larger range: rest of this chapter as well as whole next chapter
             if comment.find(re.compile('(figure|table)')):
                 first = vs[0]
-                last = Ref('%s.%s.%s' % (first.book, min(first.chapter + 1, LAST_CHAPTERS[first.book]),
-                                         CHAPTER_LAST_VERSES['%s.%s' % (first.book, first.chapter)]))
+                chap = min(first.chapter + 1, LAST_CHAPTERS[first.book])
+                ver = CHAPTER_LAST_VERSES['%s.%s' % (first.book, chap)]
+                last = Ref('%s.%s.%s' % (first.book, chap, ver))
                 vs2 = expand_ranges('%s-%s' % (first, last), verses=True)
                 vs = sorted(set(vs + vs2))
 

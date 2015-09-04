@@ -209,6 +209,9 @@ def test_expand_ranges():
     assert expand_ranges("Gen.50.1-Gen.50.26") + ' ' + expand_ranges("Exod.1.1-Exod.2.5") == expand_ranges('Gen.50.1-Exod.2.5')
     assert '1Chr.1.1' not in expand_ranges('1Chr.10.1-2Chr.9.31')
     assert expand_ranges("Gen.2.4-Gen.2.6 Gen.1.30-Gen.2.1") == "Gen.1.30 Gen.1.31 Gen.2.1 Gen.2.4 Gen.2.5 Gen.2.6"
+    rngs = expand_ranges('Num.7.1-Num.7.89')
+    assert rngs.startswith('Num.7.1')
+    assert rngs.endswith('Num.7.89')
 
 def test_first_last_reference():
     assert first_reference('Gen.1.1-Gen.1.5') == ('Gen', 1, 1)
@@ -224,6 +227,7 @@ def test_parse_studybible_reference():
     assert parse_studybible_reference('n66002001-66003022') == 'Rev.2.1-Rev.3.22'
     assert parse_studybible_reference('n66001013') == 'Rev.1.13'
     assert parse_studybible_reference('n02023001-02023003.02023006-02023008') == 'Exod.23.1-Exod.23.3 Exod.23.6-Exod.23.8'
+    assert parse_studybible_reference('n04007001-04007089') == 'Num.7.1-Num.7.89'
 
 def test_ref():
     assert Ref('Rev.1.1') > Ref('Jude.1.1')
