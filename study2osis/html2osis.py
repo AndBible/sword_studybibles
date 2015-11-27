@@ -4,6 +4,8 @@
     See LICENCE.txt
 """
 
+from __future__ import print_function
+
 import logging
 import re
 
@@ -13,7 +15,6 @@ logger = logging.getLogger('html2osis')
 
 from .bible_data import BOOKREFS
 from .bibleref import IllegalReference, first_reference, Ref
-
 
 def parse_studybible_reference(html_id):
     """
@@ -307,8 +308,27 @@ class HTML2OsisMixin(object):
             elif s.name == 'span':
                 cls = s.attrs.get('class')
                 if cls in ['smallcap', 'small-caps', 'divine-name']:
-                    s.name = 'hi'
-                    s['type'] = 'small-caps'
+                    s.name = 'divineName'
+                    if s.text == s.text.upper():
+                        s.string = s.text.lower()
+                    p = s.previous_element
+                    assert isinstance(p, NavigableString)
+                    if s.text == 'ord' and p[-1] == 'L':
+                        p.replace_with(p[:-1])
+                        s.string = 'Lord'
+                    elif s.text == 'od' and p[-1] == 'G':
+                        p.replace_with(p[:-1])
+                        s.string = 'God'
+                    elif s.text == 'am' and p[-2:] == 'I ':
+                        p.replace_with(p[:-2])
+                        s.string = 'I am'
+                    elif s.text == 'am who' and p[-2:] == 'I ':
+                        p.replace_with(p[:-2])
+                        s.string = 'I am who'
+                    else:
+                        s.name = 'hi'
+                        s['type'] = 'small-caps'
+                        logger.warning('SMALLCAPS that was not recognized %s ::: %s', s.previous_element, s)
 
                 # find outline-1 ('title' studynote covering verse range)
                 # find outline-2 (bigger studynote title, verse range highlighted)
