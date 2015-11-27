@@ -12,7 +12,7 @@ from .bible_data import LAST_CHAPTERS, CHAPTER_LAST_VERSES
 from .bibleref import verses, references_to_string, expand_ranges, Ref
 
 LINK_MAX_LENGTH = 38
-
+NUMBER_OF_CHAPTERS_FOR_FIGURES_AND_TABLES = 10
 
 def find_subranges(orig_verses, actual_verses):
     ranges = []
@@ -175,7 +175,7 @@ class FixOverlappingVersesMixin(object):
             # make figures and tables linked to some larger range: rest of this chapter as well as whole next chapter
             if comment.find(re.compile('(figure|table)')):
                 first = vs[0]
-                chap = min(first.chapter + 1, LAST_CHAPTERS[first.book])
+                chap = min(first.chapter + NUMBER_OF_CHAPTERS_FOR_FIGURES_AND_TABLES, LAST_CHAPTERS[first.book])
                 ver = CHAPTER_LAST_VERSES['%s.%s' % (first.book, chap)]
                 last = Ref('%s.%s.%s' % (first.book, chap, ver))
                 vs2 = expand_ranges('%s-%s' % (first, last), verses=True)
