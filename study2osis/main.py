@@ -57,7 +57,7 @@ def dict_to_options(opts):
         osis=False,
         no_nonadj=False,
     )
-    for key, value in default_options.iteritems():
+    for key, value in default_options.items():
         options.setdefault(key, value)
 
     return options
@@ -85,7 +85,7 @@ class AbstractStudyBible(object):
 
         attrs = set()
         for t in self.osistext.find_all():
-            for a in t.attrs.keys():
+            for a in list(t.attrs.keys()):
                 if a not in ['osisID', 'type', 'src', 'role', 'osisRef', 'osisWork', 'href', 'annotateRef',
                              'annotateType']:
                     attrs.add(a)
@@ -158,7 +158,7 @@ class Commentary(AbstractStudyBible, HTML2OsisMixin, FixOverlappingVersesMixin):
         if self.options.debug:
             out.write(self.root_soup.prettify())
         else:
-            out.write(unicode(self.root_soup))
+            out.write(str(self.root_soup))
         out.close()
 
     def read_studynotes(self, epub_zip):
@@ -219,7 +219,7 @@ class Commentary(AbstractStudyBible, HTML2OsisMixin, FixOverlappingVersesMixin):
                     n = verse
                     try:
                         while n not in self.verse_comments_firstref_dict:
-                            n = n.next()
+                            n = next(n)
                         position = self.verse_comments_firstref_dict[n]
                         position.insert_before(target_comment)
                     except n.LastVerse:
@@ -362,7 +362,7 @@ class Articles(AbstractStudyBible, HTML2OsisMixin):
         if self.options.debug:
             output.write(self.root_soup.prettify())
         else:
-            output.write(unicode(self.root_soup))
+            output.write(str(self.root_soup))
         output.close()
 
     def _get_full_ref(self, t):
@@ -383,7 +383,7 @@ class Articles(AbstractStudyBible, HTML2OsisMixin):
 
     def _fix_section_one_level(self, soup, tag, type):
         h_tags = soup.find_all(tag, recursive=False)
-        for i in xrange(len(h_tags)):
+        for i in range(len(h_tags)):
             start = h_tags[i]
             next_siblings = list(start.next_siblings)
             start['old_name'] = start.name
@@ -457,8 +457,8 @@ class Articles(AbstractStudyBible, HTML2OsisMixin):
             elif title == 'The Deity of Jesus Christ in 2 Peter':
                 self._move_to_studynote(titletag.parent, '2Pet.3.1')
 
-        if title in [u'Ezra—History of Salvation in the Old Testament',
-                     u'Song of Solomon—History of Salvation in the Old Testament']:
+        if title in ['Ezra—History of Salvation in the Old Testament',
+                     'Song of Solomon—History of Salvation in the Old Testament']:
             target = self.articles.find(osisID=fix_osis_id('History of Salvation in the Old Testament'
                                                            '  Preparing the Way for Christ'))
             self._fix_sections(soup)
@@ -611,12 +611,12 @@ class Convert(object):
         logger.info('Making sword module')
         fd, bible_osis_filename = tempfile.mkstemp()
         temp = codecs.open(bible_osis_filename, 'w', 'utf-8')
-        temp.write(unicode(self.commentary.root_soup))
+        temp.write(str(self.commentary.root_soup))
         temp.close()
         os.close(fd)
         fd, articles_osis_filename = tempfile.mkstemp()
         temp = codecs.open(articles_osis_filename, 'w', 'utf-8')
-        temp.write(unicode(self.articles.root_soup))
+        temp.write(str(self.articles.root_soup))
         temp.close()
         os.close(fd)
 
@@ -635,7 +635,7 @@ class Convert(object):
                 if self.epub_zip:
                     image_fname_in_zip = '/'.join(IMAGE_DIRECTORY + [i])
                     image_fname_in_fs = os.path.join(image_path, i)
-                    with open(image_fname_in_fs, 'w') as f:
+                    with open(image_fname_in_fs, 'wb') as f:
                         f.write(self.epub_zip.open(image_fname_in_zip).read())
                 else:
                     shutil.copyfile(os.path.join(*([self.epub_filename] + IMAGE_DIRECTORY + [i])), os.path.join(image_path, i))

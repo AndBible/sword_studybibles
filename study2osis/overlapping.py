@@ -246,7 +246,7 @@ class FixOverlappingVersesMixin(object):
 
     def _add_reference_links_to_comments(self):
         # Add 'see also' reference links to comments with larger range
-        for ref, comment_set in self.verse_comments_all_dict.iteritems():
+        for ref, comment_set in self.verse_comments_all_dict.items():
             main_comment = self.verse_comment_dict[ref]
             for comment in comment_set:
                 if comment != main_comment:

@@ -10,7 +10,7 @@ def get_verse_ranges():
     from .bibleref import Ref
 
     bs = BeautifulSoup(open('esvs.osis').read(), 'xml')
-    print 'reading done'
+    print('reading done')
     verse_nums = {}
     chap_nums = {}
     for v in bs.find_all('verse'):

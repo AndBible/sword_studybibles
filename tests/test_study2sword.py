@@ -51,7 +51,7 @@ def test_overlapping_1():
     s.expand_all_ranges()
     s.fix_overlapping_ranges()
     result = osistext.prettify()
-    print result
+    print(result)
     assert link_refs(osistext, 'Gen.1.1') == set()
     assert link_refs(osistext, 'Gen.1.2') == {Ref('Gen.1.1')}
     assert link_refs(osistext, 'Gen.1.3') == {Ref('Gen.1.1'), Ref('Gen.1.2')}
@@ -73,7 +73,7 @@ def test_merge_comments():
     s.expand_all_ranges()
     s.fix_overlapping_ranges()
     result = osistext.prettify()
-    print result
+    print(result)
     assert link_refs(osistext, 'Gen.1.1') == set()
     assert link_refs(osistext, 'Gen.1.2') == {Ref('Gen.1.1')}
     assert link_refs(osistext, 'Gen.1.4') == {Ref('Gen.1.1'), Ref('Gen.1.2')}
@@ -96,7 +96,7 @@ def test_commentless_verse_within_rangecomment():
     s.expand_all_ranges()
     s.fix_overlapping_ranges()
     result = osistext.prettify()
-    print result
+    print(result)
     assert link_refs(osistext, 'Gen.1.1') == set()
     assert link_refs(osistext, 'Gen.1.2') == {Ref('Gen.1.1')}
     assert link_refs(osistext, 'Gen.1.3') == {Ref('Gen.1.1')}
@@ -118,7 +118,7 @@ def test_adjacent_verses():
     s.expand_all_ranges()
     s.fix_overlapping_ranges()
     result = osistext.prettify()
-    print result
+    print(result)
     assert link_refs(osistext, 'Gen.1.1') == set()
     assert link_refs(osistext, 'Gen.1.2') == {Ref('Gen.1.1')}
     assert link_refs(osistext, 'Gen.1.3') == {Ref('Gen.1.1')}
@@ -141,9 +141,9 @@ def test_genbook():
     s = Articles(options, None)
     #s.root_soup = s.osistext = osistext
     s._process_html_body(osistext.find('body'))
-    result = unicode(s.root_soup) #.prettify()
-    print repr(result)
-    assert result == u'<?xml version="1.0" encoding="utf-8"?>\n<osis xmlns="http://www.bibletechnologies.net/2003/OSIS/namespace" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.bibletechnologies.net/2003/OSIS/namespace http://www.bibletechnologies.net/osisCore.2.1.1.xsd">\n<osisText osisIDWork="ESVN" osisRefWork="book" xml:lang="en">\n<header>\n<work osisWork="ESVN">\n<title/>\n<creator role="aut"/>\n<identifier type="OSIS">ESVN</identifier>\n<refSystem>Bible.NRSV</refSystem>\n</work>\n</header>\n<div osisID="Book introductions" type="book"/><div osisID="Articles" type="book"/><div osisID="Uncategorized resources" type="book"/></osisText>\n</osis>'
+    result = str(s.root_soup) #.prettify()
+    print((repr(result)))
+    assert result == '<?xml version="1.0" encoding="utf-8"?>\n<osis xmlns="http://www.bibletechnologies.net/2003/OSIS/namespace" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.bibletechnologies.net/2003/OSIS/namespace http://www.bibletechnologies.net/osisCore.2.1.1.xsd">\n<osisText osisIDWork="ESVN" osisRefWork="book" xml:lang="en">\n<header>\n<work osisWork="ESVN">\n<title/>\n<creator role="aut"/>\n<identifier type="OSIS">ESVN</identifier>\n<refSystem>Bible.NRSV</refSystem>\n</work>\n</header>\n<div osisID="Book introductions" type="book"/><div osisID="Articles" type="book"/><div osisID="Uncategorized resources" type="book"/></osisText>\n</osis>'
 
 def test_genbook2():
     osistext = BeautifulSoup("""
@@ -162,9 +162,9 @@ def test_genbook2():
     s = Articles(options, None)
     #s.root_soup = s.osistext = osistext
     s._process_html_body(osistext.find('body'))
-    result = unicode(s.root_soup) #.prettify()
-    print repr(result)
-    assert result == u'<?xml version="1.0" encoding="utf-8"?>\n<osis xmlns="http://www.bibletechnologies.net/2003/OSIS/namespace" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.bibletechnologies.net/2003/OSIS/namespace http://www.bibletechnologies.net/osisCore.2.1.1.xsd">\n<osisText osisIDWork="ESVN" osisRefWork="book" xml:lang="en">\n<header>\n<work osisWork="ESVN">\n<title/>\n<creator role="aut"/>\n<identifier type="OSIS">ESVN</identifier>\n<refSystem>Bible.NRSV</refSystem>\n</work>\n</header>\n<div osisID="Book introductions" type="book"/><div osisID="Articles" type="book"/><div osisID="Uncategorized resources" type="book"/></osisText>\n</osis>'
+    result = str(s.root_soup) #.prettify()
+    print((repr(result)))
+    assert result == '<?xml version="1.0" encoding="utf-8"?>\n<osis xmlns="http://www.bibletechnologies.net/2003/OSIS/namespace" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.bibletechnologies.net/2003/OSIS/namespace http://www.bibletechnologies.net/osisCore.2.1.1.xsd">\n<osisText osisIDWork="ESVN" osisRefWork="book" xml:lang="en">\n<header>\n<work osisWork="ESVN">\n<title/>\n<creator role="aut"/>\n<identifier type="OSIS">ESVN</identifier>\n<refSystem>Bible.NRSV</refSystem>\n</work>\n</header>\n<div osisID="Book introductions" type="book"/><div osisID="Articles" type="book"/><div osisID="Uncategorized resources" type="book"/></osisText>\n</osis>'
 
 def test_colspan():
     osistext = BeautifulSoup("""<body><table><tr><td colspan="3">test</td></tr></table></body>""", 'xml')
@@ -172,7 +172,7 @@ def test_colspan():
 
     s = Articles(options, None)
     s.fix_table_colspan(osistext.find('body'))
-    assert unicode(osistext) == unicode(result)
+    assert str(osistext) == str(result)
 
 import pytest
 @pytest.mark.parametrize('osistext,result',[
@@ -200,7 +200,7 @@ def test_rowspan(osistext, result):
 
     s = Articles(options, None)
     s.fix_table_rowspan(osistext_.find('body'))
-    assert unicode(osistext_) == unicode(result__)
+    assert str(osistext_) == str(result__)
 
 def test_expand_ranges():
     assert expand_ranges("Gen.2.4-Gen.2.6") == "Gen.2.4 Gen.2.5 Gen.2.6"
@@ -243,10 +243,10 @@ def test_ref():
     assert sorted([Ref('Gen.1.1'), Ref('Gen.2.1')]) == [Ref("Gen.1.1"), Ref("Gen.2.1")]
     assert sorted([Ref('Gen.1.1'), Ref('Exod.2.1')]) == [Ref("Gen.1.1"), Ref("Exod.2.1")]
     assert sorted([Ref('Rev.1.1'), Ref('Exod.2.1')]) == [Ref("Exod.2.1"), Ref("Rev.1.1")]
-    assert Ref('Gen.1.1').next() == Ref('Gen.1.2')
-    assert Ref('Gen.1.31').next() == Ref('Gen.2.1')
-    assert Ref('Gen.50.25').next() == Ref('Gen.50.26')
-    assert Ref('Gen.50.26').next() == Ref('Exod.1.1')
+    assert next(Ref('Gen.1.1')) == Ref('Gen.1.2')
+    assert next(Ref('Gen.1.31')) == Ref('Gen.2.1')
+    assert next(Ref('Gen.50.25')) == Ref('Gen.50.26')
+    assert next(Ref('Gen.50.26')) == Ref('Exod.1.1')
     assert list(xrefrange(Ref('Gen.1.1'), 'Gen.1.4')) == [Ref("Gen.1.1"), Ref("Gen.1.2"), Ref("Gen.1.3"), Ref("Gen.1.4")]
     assert Ref('Rev', 1, 1) == Ref('Rev.1.1')
 

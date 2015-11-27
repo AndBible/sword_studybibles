@@ -28,7 +28,7 @@ def cached_refs(cls):
             ref_string = '%s.%s.%s' % tuple(ref_string)
         if isinstance(ref_string, Ref.orig_cls):
             return ref_string
-        assert isinstance(ref_string, (str, unicode))
+        assert isinstance(ref_string, str)
         if ':' in ref_string:
             ref_string = ref_string.split(':')[1]
         if ref_string not in instances:
@@ -42,7 +42,7 @@ def cached_refs(cls):
 
 
 @cached_refs
-class Ref(object):
+class Ref:
     class LastVerse(Exception):
         pass
 
@@ -70,11 +70,11 @@ class Ref(object):
     def verse(self):
         return self.numref[2]
 
-    def __unicode__(self):
-        return u'%s.%s.%s' % (BOOKREFS[self.numref[0]], self.numref[1], self.numref[2])
-
     def __str__(self):
-        return str(unicode(self))
+        return '%s.%s.%s' % (BOOKREFS[self.numref[0]], self.numref[1], self.numref[2])
+
+    def __hash__(self):
+        return hash(self.numref)
 
     def __gt__(self, other):
         return self.numref > other.numref
@@ -88,7 +88,7 @@ class Ref(object):
     def __repr__(self):
         return 'Ref("%s")' % str(self)
 
-    def next(self):
+    def __next__(self):
         if self.verse < CHAPTER_LAST_VERSES['%s.%s' % (self.book, self.chapter)]:
             return Ref('%s.%s.%s' % (self.book, self.chapter, self.verse + 1))
         elif self.chapter < LAST_CHAPTERS[self.book]:
@@ -103,7 +103,7 @@ class Ref(object):
         while True:
             yield n
             try:
-                n = n.next()
+                n = next(n)
             except self.LastVerse:
                 break
 
@@ -170,20 +170,20 @@ def _expand_ranges(ref):
     lastb = BOOKREFS.index(lastb)
 
     if firstb == lastb and firstc == lastc:
-        for i in xrange(int(firstv), int(lastv) + 1):
+        for i in range(int(firstv), int(lastv) + 1):
             verselist.append((BOOKREFS[firstb], firstc, i))
     else:
         # rest of first chapter
         book_id = firstb
         book = BOOKREFS[book_id]
-        for verse in xrange(firstv, CHAPTER_LAST_VERSES['%s.%s' % (book, firstc)] + 1):
+        for verse in range(firstv, CHAPTER_LAST_VERSES['%s.%s' % (book, firstc)] + 1):
             verselist.append((book, firstc, verse))
 
         if firstc == LAST_CHAPTERS[book]:
             book_id = firstb + 1
 
         # full chapters
-        for book_id1 in xrange(book_id, lastb + 1):
+        for book_id1 in range(book_id, lastb + 1):
             book = BOOKREFS[book_id1]
             if book_id1 == lastb:
                 if firstb != lastb:
@@ -195,12 +195,12 @@ def _expand_ranges(ref):
                 first_chap = firstc + 1
                 last_chap = LAST_CHAPTERS[book]
 
-            for chap in xrange(first_chap, last_chap + 1):
+            for chap in range(first_chap, last_chap + 1):
                 if book_id1 == lastb and chap == lastc:
                     last_verse = lastv
                 else:
                     last_verse = CHAPTER_LAST_VERSES['%s.%s' % (book, chap)]
-                for verse in xrange(1, last_verse + 1):
+                for verse in range(1, last_verse + 1):
                     verselist.append((book, chap, verse))
 
     result = ' '.join('%s.%s.%s' % i for i in verselist)

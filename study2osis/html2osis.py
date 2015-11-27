@@ -4,7 +4,7 @@
     See LICENCE.txt
 """
 
-from __future__ import print_function
+
 
 import logging
 import re
@@ -76,7 +76,7 @@ class HTML2OsisMixin(object):
             This is not an easy task to implement robustly such that all cases are
             handled, but at least certain clear cases can be easily done.
         """
-        tag_content = link_tag.text.strip().replace(u'–', '-')
+        tag_content = link_tag.text.strip().replace('–', '-')
 
         m = re.match(r'^(\d+)[a-e]$', tag_content) # '1', (must be verse)
         if m:
@@ -335,7 +335,7 @@ class HTML2OsisMixin(object):
                 # find outline-3 (smaller studynote title, verse range not highlighted)
                 # find outline-4 (even smaller studynote title, verse range not highlighted)
 
-                elif cls in ['outline-%s' % i for i in xrange(1, 5)]:
+                elif cls in ['outline-%s' % i for i in range(1, 5)]:
                     s.name = 'hi'
                     s['type'] = 'bold'
                     new_tag = self.root_soup.new_tag('hi', type='underline')
@@ -393,7 +393,7 @@ class HTML2OsisMixin(object):
         for td in table.find_all('td', colspan=True):
             colspan = int(td['colspan'])
             del td.attrs['colspan']
-            for i in xrange(colspan-1):
+            for i in range(colspan-1):
                 n_td = self.root_soup.new_tag('td', add=1)
                 n_td.string = ' '
                 td.insert_after(n_td)
