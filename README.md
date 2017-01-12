@@ -25,11 +25,9 @@ Try ONLINE version at http://tuomasairaksinen.fi/studybibles/
 Installing and converting to SWORD module
 -----------------------------------------
 
-Install some python packages:
+Install some python packages (requires python 3):
 
-    pip install beautifulsoup4
-    pip install jinja2
-    pip install lxml
+    pip install -r requirements.txt
 
 Install osis2mod tool that can be obtained from http://www.crosswire.org/wiki/DevTools:Modules
 
