@@ -29,9 +29,9 @@ def find_subranges(orig_verses, actual_verses):
     return ranges
 
 
-def sort_tag_content(soup, key, *args, **kwargs):
+def sort_tag_content(soup, key, *args, reverse=False, **kwargs):
     new_contents = [i.extract() for i in soup.find_all(*args, **kwargs)] # 'item', recursive=False)]
-    new_contents.sort(key=key)
+    new_contents.sort(key=key, reverse=reverse)
     for i in new_contents:
         soup.append(i)
 
@@ -256,7 +256,7 @@ class FixOverlappingVersesMixin(object):
         # Sort links
         for ref_links_list in self.osistext.find_all('list', cls='reference_links'):
             ref_links_list.parent.append(ref_links_list.extract()) # make sure this list is last
-            sort_tag_content(ref_links_list, lambda x: Ref(x.reference['osisRef']), 'item', comment_link=True)
+            sort_tag_content(ref_links_list, lambda x: Ref(x.reference['osisRef']), 'item', comment_link=True, reverse=True)
 
     def _create_empty_comment(self, verses):
         if isinstance(verses, (list, set)):
