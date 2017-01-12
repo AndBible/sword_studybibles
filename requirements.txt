@@ -1,5 +1,7 @@
+# Last tested with Python 3.6
+Cython
 Jinja2==2.7.3
-beautifulsoup4==4.3.2
+beautifulsoup4==4.5.3
 ipdb==0.8.1
 lxml==3.4.4
 py==1.4.28
