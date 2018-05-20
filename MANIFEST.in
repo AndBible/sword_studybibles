@@ -1,3 +1,2 @@
-include study2osis/*.py
-include study2osis/*.conf
-include study2osis/*.xml
+include src/study2osis/*.conf
+include src/study2osis/*.xml
