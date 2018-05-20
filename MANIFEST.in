@@ -1,0 +1,2 @@
+include src/study2osis/*.conf
+include src/study2osis/*.xml

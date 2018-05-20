@@ -2,36 +2,52 @@
     Copyright (C) 2015 Tuomas Airaksinen.
     See LICENCE.txt
 """
-from bs4 import Tag
-from .bible_data import BOOKREFS, CHAPTER_LAST_VERSES, LAST_CHAPTERS
 from functools import wraps
+
+from bs4 import Tag
+
+from .bible_data import BOOKREFS, CHAPTER_LAST_VERSES, LAST_CHAPTERS
+
 
 class IllegalReference(Exception):
     pass
+
 
 def cached_refs(cls):
     instances = {}
 
     @wraps(cls)
-    def getinstance(ref_string):
-        assert ref_string
+    def getinstance(*args):
+        assert args
+        if len(args) == 1:
+            ref_string, = args
+        else:
+            ref_string = args
+
         if isinstance(ref_string, (list, tuple)):
             ref_string = '%s.%s.%s' % tuple(ref_string)
         if isinstance(ref_string, Ref.orig_cls):
             return ref_string
-        assert isinstance(ref_string, (str, unicode))
+        assert isinstance(ref_string, str)
+        if ':' in ref_string:
+            ref_string = ref_string.split(':')[1]
         if ref_string not in instances:
             instances[ref_string] = cls(ref_string)
         return instances[ref_string]
+
     getinstance.orig_cls = cls
     return getinstance
 
-class LastVerse(Exception):
-    pass
+
+
 
 @cached_refs
-class Ref(object):
-    def __init__(self, ref_string):
+class Ref:
+    class LastVerse(Exception):
+        pass
+
+    def __init__(self, *args):
+        ref_string, = args
         book, chap, verse = ref_string.split('.')
         bookint = BOOKREFS.index(book)
         chapint = int(chap)
@@ -45,6 +61,7 @@ class Ref(object):
     @property
     def book_int(self):
         return self.numref[0]
+
     @property
     def chapter(self):
         return self.numref[1]
@@ -53,11 +70,11 @@ class Ref(object):
     def verse(self):
         return self.numref[2]
 
-    def __unicode__(self):
-        return u'%s.%s.%s' % (BOOKREFS[self.numref[0]], self.numref[1], self.numref[2])
-
     def __str__(self):
-        return str(unicode(self))
+        return '%s.%s.%s' % (BOOKREFS[self.numref[0]], self.numref[1], self.numref[2])
+
+    def __hash__(self):
+        return hash(self.numref)
 
     def __gt__(self, other):
         return self.numref > other.numref
@@ -71,29 +88,31 @@ class Ref(object):
     def __repr__(self):
         return 'Ref("%s")' % str(self)
 
-    def next(self):
-        if self.verse < CHAPTER_LAST_VERSES['%s.%s'%(self.book, self.chapter)]:
-            return Ref('%s.%s.%s'%(self.book, self.chapter, self.verse + 1))
+    def __next__(self):
+        if self.verse < CHAPTER_LAST_VERSES['%s.%s' % (self.book, self.chapter)]:
+            return Ref('%s.%s.%s' % (self.book, self.chapter, self.verse + 1))
         elif self.chapter < LAST_CHAPTERS[self.book]:
-            return Ref('%s.%s.%s'%(self.book, self.chapter + 1, 1))
+            return Ref('%s.%s.%s' % (self.book, self.chapter + 1, 1))
         elif self.book != 'Rev':
-            return Ref('%s.%s.%s'%(BOOKREFS[self.book_int+1], 1, 1))
+            return Ref('%s.%s.%s' % (BOOKREFS[self.book_int + 1], 1, 1))
         else:
-            raise LastVerse
+            raise self.LastVerse
 
     def iter(self):
         n = self
         while True:
             yield n
             try:
-                n = n.next()
-            except LastVerse:
+                n = next(n)
+            except self.LastVerse:
                 break
+
 
 def verses(a):
     if isinstance(a, Tag):
         a = a['annotateRef']
     return sorted([Ref(i) for i in a.split(' ')])
+
 
 def xrefrange(start, stop):
     start = Ref(start)
@@ -105,12 +124,17 @@ def xrefrange(start, stop):
             return
         yield i
 
+
 def refrange(start, stop):
     return list(xrefrange(start, stop))
 
 
-def references_to_string(vs):
-    return ' '.join(str(i) for i in sorted(vs))
+def references_to_string(vs, sort=True):
+    if sort:
+        return ' '.join(str(i) for i in sorted(vs))
+    else:
+        return ' '.join(str(i) for i in vs)
+
 
 def first_reference(ref):
     if ' ' in ref:
@@ -129,6 +153,7 @@ def last_reference(ref):
     r = tuple(ref.split('.'))
     return (r[0], int(r[1]), int(r[2]))
 
+
 def _expand_ranges(ref):
     """
     Expand ranges:
@@ -145,45 +170,47 @@ def _expand_ranges(ref):
     lastb = BOOKREFS.index(lastb)
 
     if firstb == lastb and firstc == lastc:
-        for i in xrange(int(firstv), int(lastv) + 1):
+        for i in range(int(firstv), int(lastv) + 1):
             verselist.append((BOOKREFS[firstb], firstc, i))
     else:
         # rest of first chapter
         book_id = firstb
         book = BOOKREFS[book_id]
-        for verse in xrange(firstv, CHAPTER_LAST_VERSES['%s.%s'%(book, firstc)]+1):
+        for verse in range(firstv, CHAPTER_LAST_VERSES['%s.%s' % (book, firstc)] + 1):
             verselist.append((book, firstc, verse))
 
         if firstc == LAST_CHAPTERS[book]:
             book_id = firstb + 1
 
         # full chapters
-        for book_id1 in xrange(book_id, lastb+1):
+        for book_id1 in range(book_id, lastb + 1):
             book = BOOKREFS[book_id1]
             if book_id1 == lastb:
                 if firstb != lastb:
                     first_chap = 1
                 else:
-                    first_chap = firstc+1
+                    first_chap = firstc + 1
                 last_chap = lastc
             else:
-                first_chap = firstc+1
+                first_chap = firstc + 1
                 last_chap = LAST_CHAPTERS[book]
 
-            for chap in xrange(first_chap, last_chap+1):
+            for chap in range(first_chap, last_chap + 1):
                 if book_id1 == lastb and chap == lastc:
                     last_verse = lastv
                 else:
-                    last_verse = CHAPTER_LAST_VERSES['%s.%s'%(book, chap)]
-                for verse in xrange(1, last_verse+1):
+                    last_verse = CHAPTER_LAST_VERSES['%s.%s' % (book, chap)]
+                for verse in range(1, last_verse + 1):
                     verselist.append((book, chap, verse))
 
     result = ' '.join('%s.%s.%s' % i for i in verselist)
     return result
 
-def expand_ranges(ref):
+
+def expand_ranges(ref, verses=False):
     """ Make sure that expanded ranges are also sorted propertly"""
     r = _expand_ranges(ref)
-    return ' '.join(str(j) for j in sorted([Ref(i) for i in set(r.split(' '))]))
-
-
+    if verses:
+        return sorted([Ref(i) for i in set(r.split(' '))])
+    else:
+        return ' '.join(str(j) for j in sorted([Ref(i) for i in set(r.split(' '))]))

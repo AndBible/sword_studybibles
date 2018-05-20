@@ -10,7 +10,7 @@ def get_verse_ranges():
     from .bibleref import Ref
 
     bs = BeautifulSoup(open('esvs.osis').read(), 'xml')
-    print 'reading done'
+    print('reading done')
     verse_nums = {}
     chap_nums = {}
     for v in bs.find_all('verse'):
@@ -21,11 +21,6 @@ def get_verse_ranges():
         chap_nums[bookref] = max(ref.numref[1], chap_nums.get(bookref, 0))
     return chap_nums, verse_nums
 
-
-TAGS_NONE = 0
-TAGS_BOOK = 1
-TAGS_CHAPTES = 2
-TAGS_VERSES = 3
 
 BOOKREFS = ['Gen', 'Exod', 'Lev', 'Num', 'Deut', 'Josh', 'Judg', 'Ruth', '1Sam', '2Sam', '1Kgs', '2Kgs', '1Chr',
             '2Chr', 'Ezra', 'Neh', 'Esth', 'Job', 'Ps', 'Prov', 'Eccl', 'Song', 'Isa', 'Jer', 'Lam', 'Ezek', 'Dan',

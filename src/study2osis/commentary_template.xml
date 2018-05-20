@@ -2,13 +2,13 @@
 <osis xmlns="http://www.bibletechnologies.net/2003/OSIS/namespace"
       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
       xsi:schemaLocation="http://www.bibletechnologies.net/2003/OSIS/namespace http://www.bibletechnologies.net/osisCore.2.1.1.xsd">
-<osisText osisIDWork="{{work_id}}" osisRefWork="defaultReferenceScheme" xml:lang="en">
+<osisText osisIDWork="{{commentary_work_id}}" osisRefWork="defaultReferenceScheme" xml:lang="en">
 <header>
-     <work osisWork="{{work_id}}">
-          <title>{{title}}</title>
-          <identifier type="OSIS">{{work_id}}</identifier>
+     <work osisWork="{{commentary_work_id}}">
+          <title>{{metadata.title}}</title>
+          <creator role="aut">{{metadata.creator}}</creator>
+          <identifier type="OSIS">{{commentary_work_id}}</identifier>
           <refSystem>Bible.NRSV</refSystem>
-          <language>en</language>
      </work>
 </header>
 </osisText>

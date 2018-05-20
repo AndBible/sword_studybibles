@@ -25,31 +25,39 @@ Try ONLINE version at http://tuomasairaksinen.fi/studybibles/
 Installing and converting to SWORD module
 -----------------------------------------
 
-Install some python packages:
+Install some python packages (requires python 3):
 
-    pip install beautifulsoup4
-    pip install jinja2
-    pip install lxml
+    pip install -r requirements.txt
 
 Install osis2mod tool that can be obtained from http://www.crosswire.org/wiki/DevTools:Modules
 
 To convert ePub to SWORD module (compressed in a zip file), run command
 
-    python studybible_to_osis.py your_book.epub your_module.zip --sword
+    python studybible_to_osis.py your_book.epub --sword
 
-Quality considerations
-----------------------
- - Studynotes, charts, figures etc
- - Tested with Andbible & Xiphos
- - Verse ranges fixed and links added
+This will generate SWORD module in a file called your_book_module.zip
+
+Quality
+-------
+ - All resources included: studynotes, charts, figures, articles etc
+ - Articles and resources as a general book module (--sword will pack them in single zip file)
+ - Convenient links are added from comments to larger-range comments
+ - Tested with AndBible & Xiphos -- software is  BETA because of limited testing and due to many issues listed below
 
 Known issues
 ------------
- - By default verse linking is hard-wired to ESVS module. This is to workaround with Andbible
-   <reference> rendering bug (or feature - this is still to be disputed).
-   You may use --bible_work_id None if you wish not to use ESVS as your bible.
+ - Xiphos displays ```<q>``` as another paragraph (Heb.1)
+ - Not Xiphos, nor AndBible obey DisplayLevel option. Only Bibletime seems to obey it. So can't use it for now
+   => need to use manual hack to merge smaller sections together..
+ - Bibletime issues: paragraphs not displayed, genbook links cause crash, images are not scaled
 
 TODO
 ----
-  - Add bible book intros into beginning of each book in commentary module (+ backreferences)
-  - Make sword book module out of other articles
+  - In links, verse range end could be checked too.
+  - Backreferences from comments to other resources (i.e. if verse is mentioned in article/etc., it is linked)
+  - Write manually some TOCs in genbook
+
+CHANGES
+-------
+ - revision 5: articles + book introductions as genbook
+
