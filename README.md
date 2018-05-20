@@ -46,13 +46,6 @@ Quality
 
 Known issues
 ------------
- - By default verse linking is hard-wired to ESVS module. This is to workaround with Andbible
-  ``` <reference>``` rendering bug (or feature - this is still to be disputed).
-   You may use --bible_work_id None if you wish not to use ESVS as your bible.
- - AndBible: links to articles/resources in genbook do not work
-   * jsword bug. Fix pending https://github.com/crosswire/jsword/pull/98
- - AndBible does not resize images => pull request pending
- - AndBible shows General book contents as a one big list instead of a tree (two/three click menu would be best?)
  - Xiphos displays ```<q>``` as another paragraph (Heb.1)
  - Not Xiphos, nor AndBible obey DisplayLevel option. Only Bibletime seems to obey it. So can't use it for now
    => need to use manual hack to merge smaller sections together..
