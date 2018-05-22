@@ -20,7 +20,7 @@ suggested via Github issue or by email. This software is at beta stage.
 Online version
 ----------------
 
-Try ONLINE version at http://tuomasairaksinen.fi/studybibles/
+Try ONLINE version at https://studybibles.evankelista.net/
 
 Installing and converting to SWORD module
 -----------------------------------------
