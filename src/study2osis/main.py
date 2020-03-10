@@ -149,8 +149,7 @@ class Commentary(AbstractStudyBible, HTML2OsisMixin, FixOverlappingVersesMixin):
         self.current_filename = ''
 
         template = jinja2.Template(open(COMMENTARY_TEMPLATE_XML).read())
-        abbreviation = initials(self.work_id)
-        output_xml = BeautifulSoup(template.render(abbreviation=abbreviation, commentary_work_id=self.work_id, metadata=options.metadata), 'xml')
+        output_xml = BeautifulSoup(template.render(commentary_work_id=self.work_id, metadata=options.metadata), 'xml')
         self.root_soup = output_xml
         self.osistext = output_xml.find('osisText')
 
@@ -262,8 +261,7 @@ class Articles(AbstractStudyBible, HTML2OsisMixin):
         self.used_resources = []
 
         template = jinja2.Template(open(GENBOOK_TEMPLATE_XML).read())
-        abbreviation=initials(self.work_id)
-        output_xml = BeautifulSoup(template.render(abbreviation=abbreviation, articles_work_id=self.work_id, metadata=options.metadata), 'xml')
+        output_xml = BeautifulSoup(template.render(articles_work_id=self.work_id, metadata=options.metadata), 'xml')
         self.root_soup = output_xml
         self.osistext = output_xml.find('osisText')
         self.articles = output_xml.new_tag('div', type='book', osisID=fix_osis_id('Articles'))
@@ -651,6 +649,7 @@ class Convert(object):
         # Bible conf
         conf_filename = os.path.join('mods.d', self.options.commentary_work_id.replace(' ', '_').lower() + '.conf')
         conf_str = jinja2.Template(codecs.open(BIBLE_CONF_TEMPLATE, 'r', 'utf-8').read()).render(
+            abbreviation=initials(self.options.commentary_work_id),
             commentary_work_id=self.options.commentary_work_id,
             commentary_data_path=self.options.commentary_data_path,
             filename=self.epub_filename,
@@ -664,6 +663,7 @@ class Convert(object):
         # Articles+resources conf
         conf_filename = os.path.join('mods.d', self.options.articles_work_id.replace(' ', '_').lower() + '.conf')
         conf_str = jinja2.Template(codecs.open(GENBOOK_CONF_TEMPLATE, 'r', 'utf-8').read()).render(
+            abbreviation=initials(self.options.articles_work_id),
             articles_work_id=self.options.articles_work_id,
             articles_data_path=self.options.articles_data_path,
             filename=self.epub_filename,
