@@ -70,6 +70,12 @@ def fix_osis_id(osisid):
     return osisid.strip()
 
 
+def initials(string: str) -> str:
+    result = "".join([i[0] for i in string.split(" ")])[:5]
+    logger.info("%s abbreviated to %s", string, result)
+    return result
+
+
 class AbstractStudyBible(object):
     """
         Some common methods for Commentary and Articles
@@ -143,7 +149,8 @@ class Commentary(AbstractStudyBible, HTML2OsisMixin, FixOverlappingVersesMixin):
         self.current_filename = ''
 
         template = jinja2.Template(open(COMMENTARY_TEMPLATE_XML).read())
-        output_xml = BeautifulSoup(template.render(commentary_work_id=self.work_id, metadata=options.metadata), 'xml')
+        abbreviation = initials(self.work_id)
+        output_xml = BeautifulSoup(template.render(abbreviation=abbreviation, commentary_work_id=self.work_id, metadata=options.metadata), 'xml')
         self.root_soup = output_xml
         self.osistext = output_xml.find('osisText')
 
@@ -255,7 +262,8 @@ class Articles(AbstractStudyBible, HTML2OsisMixin):
         self.used_resources = []
 
         template = jinja2.Template(open(GENBOOK_TEMPLATE_XML).read())
-        output_xml = BeautifulSoup(template.render(articles_work_id=self.work_id, metadata=options.metadata), 'xml')
+        abbreviation=initials(self.work_id)
+        output_xml = BeautifulSoup(template.render(abbreviation=abbreviation, articles_work_id=self.work_id, metadata=options.metadata), 'xml')
         self.root_soup = output_xml
         self.osistext = output_xml.find('osisText')
         self.articles = output_xml.new_tag('div', type='book', osisID=fix_osis_id('Articles'))
@@ -337,7 +345,7 @@ class Articles(AbstractStudyBible, HTML2OsisMixin):
             if 'type' not in pt.attrs:
                 pt.unwrap()
 
-        sort_tag_content(self.other, key=lambda x: x.attrs.get('osisID', ''))
+        sort_tag_content(self.other, key=lambda x: x.attrs.get('osisID', ''), recursive=False)
 
         full_toc = self.root_soup.new_tag('div', type='book', osisID=fix_osis_id('Full Table of Contents'))
         full_toc.append(self.root_soup.new_tag('title'))
