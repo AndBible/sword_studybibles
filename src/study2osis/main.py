@@ -553,6 +553,7 @@ class Convert(object):
         commentary_data_path = 'modules/comments/zcom/{wid}'.format(wid=commentary_work_id.replace(' ', '_'))
         articles_data_path = 'modules/genbook/rawgenbook/{wid}/{wid}'.format(wid=articles_work_id.replace(' ', '_'))
 
+        self.options.setdefault('cipher_key', None)
         self.options.setdefault('images', True)
         self.options.setdefault('cross_references', True)
         self.options.setdefault('commentary_work_id', commentary_work_id)
@@ -673,9 +674,12 @@ class Convert(object):
         with codecs.open(os.path.join(module_dir, conf_filename), 'w', 'utf-8') as f:
             f.write(conf_str)
 
-        process = subprocess.Popen(
-            ['osis2mod', commentary_save_path, bible_osis_filename, '-v', 'NRSV', '-z', '-b', '3'],
-            stdout=subprocess.PIPE)
+        cipher_key = self.options.cipher_key
+        cmdline = ['osis2mod', commentary_save_path, bible_osis_filename, '-v', 'NRSV', '-z', '-b', '3']
+        if cipher_key:
+            cmdline.extend(['-c', cipher_key])
+
+        process = subprocess.Popen(cmdline, stdout=subprocess.PIPE)
         process.communicate()
         process.wait()
         os.unlink(bible_osis_filename)
@@ -710,6 +714,8 @@ def main():
                       help='Do not create empty comments (with only links) for non-adjacent verse ranges')
     parser.add_option('--bible_work_id', dest='bible_work_id', default='None',
                       help='Bible work_id (verses are linked there). "None" -> no work_id specification')
+    parser.add_option('--cipher_key', dest='cipher_key', default='None',
+                      help='Encryption key. "None" -> no encryption')
 
     options, args = parser.parse_args()
     if len(args) == 1:
