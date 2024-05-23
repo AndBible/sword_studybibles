@@ -24,7 +24,7 @@ Install some python packages (requires python 3):
 
     pip install -r requirements.txt
 
-Install osis2mod tool that can be obtained from http://www.crosswire.org/wiki/DevTools:Modules
+Install osis2mod tool that can be obtained from https://wiki.crosswire.org/DevTools:Modules
 
 To convert ePub to SWORD module (compressed in a zip file), run command
 
