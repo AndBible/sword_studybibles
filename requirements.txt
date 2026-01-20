@@ -4,8 +4,56 @@
 #
 #    pip-compile --output-file requirements.txt requirements.in
 #
+backports.functools-lru-cache==1.6.3
+    # via wcwidth
+backports.shutil-get-terminal-size==1.0.0
+    # via ipython
 beautifulsoup4==4.6.0
+    # via -r requirements.in
+decorator==4.4.2
+    # via
+    #   ipython
+    #   traitlets
+enum34==1.1.10
+    # via traitlets
+ipdb==0.13.7
+    # via -r requirements.in
+ipython-genutils==0.2.0
+    # via traitlets
+ipython==5.10.0
+    # via ipdb
 jinja2==2.10
-lxml==4.2.1
-markupsafe==1.0           # via jinja2
-ipdb
+    # via -r requirements.in
+lxml==4.6.3
+    # via -r requirements.in
+markupsafe==1.0
+    # via jinja2
+pathlib2==2.3.5
+    # via
+    #   ipython
+    #   pickleshare
+pexpect==4.8.0
+    # via ipython
+pickleshare==0.7.5
+    # via ipython
+prompt-toolkit==1.0.18
+    # via ipython
+ptyprocess==0.7.0
+    # via pexpect
+pygments==2.5.2
+    # via ipython
+scandir==1.10.0
+    # via pathlib2
+simplegeneric==0.8.1
+    # via ipython
+six==1.15.0
+    # via
+    #   pathlib2
+    #   prompt-toolkit
+    #   traitlets
+toml==0.10.2
+    # via ipdb
+traitlets==4.3.3
+    # via ipython
+wcwidth==0.2.5
+    # via prompt-toolkit
